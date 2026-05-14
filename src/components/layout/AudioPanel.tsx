@@ -21,41 +21,86 @@ const Slider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) 
 );
 
 export function AudioPanel() {
-  const { inputGain, bassReact, midReact, trebReact, setAudioControl, language } = useStore();
+  const { inputGain, bassReact, midReact, trebReact, setAudioControl, language,
+          subBassSense, bassSense, midSense, trebleSense, noiseGate, beatMultiplier, setAudioParam } = useStore();
   const i18n = t[language];
 
   return (
     <div className="w-full p-6 flex flex-col gap-6">
-      <div className="flex items-center gap-3 text-white/80">
-        <Activity size={16} className="text-green-400" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">{i18n.AUDIO_ENGINE}</span>
+      <div className="flex items-center justify-between text-white/80">
+        <div className="flex items-center gap-3">
+          <Activity size={16} className="text-green-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest">Advanced Audio Console</span>
+        </div>
+        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
       </div>
       
       <div className="pt-2">
-        <Slider 
-          label={i18n.INPUT_GAIN} 
-          value={inputGain} 
-          onChange={(v: number) => setAudioControl('inputGain', v)} 
-          max={3} 
-        />
-        <Slider 
-          label={i18n.BASS_IMPACT} 
-          value={bassReact} 
-          onChange={(v: number) => setAudioControl('bassReact', v)} 
-          max={3} 
-        />
-        <Slider 
-          label={i18n.MID_SHAPE} 
-          value={midReact} 
-          onChange={(v: number) => setAudioControl('midReact', v)} 
-          max={3} 
-        />
-        <Slider 
-          label={i18n.TREBLE_SPARK} 
-          value={trebReact} 
-          onChange={(v: number) => setAudioControl('trebReact', v)} 
-          max={3} 
-        />
+        <div className="mb-6 border-b border-white/5 pb-4">
+          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">Input & Dynamics</h3>
+          <Slider 
+            label="Master Gain" 
+            value={inputGain} 
+            onChange={(v: number) => setAudioControl('inputGain', v)} 
+            max={5} 
+          />
+          <Slider 
+            label="Noise Gate" 
+            value={noiseGate} 
+            onChange={(v: number) => setAudioParam('noiseGate', v)} 
+            max={1} 
+          />
+          <Slider 
+            label="Beat Detection Multiplier" 
+            value={beatMultiplier} 
+            onChange={(v: number) => setAudioParam('beatMultiplier', v)} 
+            max={3} 
+          />
+        </div>
+
+        <div className="border-b border-white/5 pb-4 mb-4">
+          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">Frequency Sensitivities</h3>
+          <Slider 
+            label="Sub Bass (20-60Hz)" 
+            value={subBassSense} 
+            onChange={(v: number) => setAudioParam('subBassSense', v)} 
+            max={3} 
+          />
+          <Slider 
+            label="Bass (60-250Hz)" 
+            value={bassSense} 
+            onChange={(v: number) => setAudioParam('bassSense', v)} 
+            max={3} 
+          />
+          <Slider 
+            label="Mid (250-2000Hz)" 
+            value={midSense} 
+            onChange={(v: number) => setAudioParam('midSense', v)} 
+            max={3} 
+          />
+          <Slider 
+            label="Treble (6000Hz+)" 
+            value={trebleSense} 
+            onChange={(v: number) => setAudioParam('trebleSense', v)} 
+            max={3} 
+          />
+        </div>
+
+        <div>
+          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">Legacy Routing</h3>
+          <Slider 
+            label="Bass Routing" 
+            value={bassReact} 
+            onChange={(v: number) => setAudioControl('bassReact', v)} 
+            max={3} 
+          />
+          <Slider 
+            label="Mid Routing" 
+            value={midReact} 
+            onChange={(v: number) => setAudioControl('midReact', v)} 
+            max={3} 
+          />
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useStore } from '@/store/useStore';
-import { Palette } from 'lucide-react';
+import { Palette, Pipette } from 'lucide-react';
 
 const Slider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) => (
   <div className="flex flex-col gap-2 mb-4">
@@ -19,8 +19,29 @@ const Slider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) 
   </div>
 );
 
+const ColorPickerInput = ({ label, value, onChange }: any) => (
+  <div className="flex items-center justify-between mb-3 bg-white/5 p-2 rounded-lg border border-white/5">
+    <span className="text-[10px] uppercase font-bold text-white/60 tracking-widest pl-2">{label}</span>
+    <div className="relative w-8 h-8 rounded-md overflow-hidden cursor-pointer border border-white/20 shadow-inner group">
+      <input 
+        type="color" 
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer"
+      />
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 pointer-events-none">
+        <Pipette size={12} className="text-white" />
+      </div>
+    </div>
+  </div>
+);
+
 export function ColorPanel() {
-  const { saturation, contrast, brightness, baseColor, setColorGrading } = useStore();
+  const { 
+    baseColor, secondaryColor, accentColor, bgColor,
+    saturation, contrast, brightness, gamma, exposure,
+    setColorGrading 
+  } = useStore();
 
   const colors = [
     { name: 'Cyber Blue', value: '#00f3ff' },
@@ -34,42 +55,23 @@ export function ColorPanel() {
     <div className="w-full p-6 flex flex-col gap-6">
       <div className="flex items-center gap-3 text-white/80">
         <Palette size={16} className="text-pink-400" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">Color Grading</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest">Color & Mood</span>
       </div>
       
-      <div className="flex gap-3 flex-wrap mb-2">
-        {colors.map((c) => (
-          <button
-            key={c.value}
-            onClick={() => setColorGrading('baseColor', c.value)}
-            className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-125 ${
-              baseColor === c.value ? 'border-white scale-125 shadow-[0_0_15px_rgba(255,255,255,0.4)]' : 'border-transparent opacity-60 hover:opacity-100'
-            }`}
-            style={{ backgroundColor: c.value }}
-            title={c.name}
-          />
-        ))}
+      <div className="flex flex-col gap-1">
+        <ColorPickerInput label="Primary" value={baseColor} onChange={(v: string) => setColorGrading('baseColor', v)} />
+        <ColorPickerInput label="Secondary" value={secondaryColor} onChange={(v: string) => setColorGrading('secondaryColor', v)} />
+        <ColorPickerInput label="Accent" value={accentColor} onChange={(v: string) => setColorGrading('accentColor', v)} />
+        <ColorPickerInput label="Background" value={bgColor} onChange={(v: string) => setColorGrading('bgColor', v)} />
       </div>
 
+      <div className="h-px w-full bg-white/5 my-2" />
+
       <div className="pt-2">
-        <Slider 
-          label="Saturation" 
-          value={saturation} 
-          onChange={(v: number) => setColorGrading('saturation', v)} 
-          max={3} 
-        />
-        <Slider 
-          label="Contrast" 
-          value={contrast} 
-          onChange={(v: number) => setColorGrading('contrast', v)} 
-          max={3} 
-        />
-        <Slider 
-          label="Brightness" 
-          value={brightness} 
-          onChange={(v: number) => setColorGrading('brightness', v)} 
-          max={3} 
-        />
+        <Slider label="Saturation" value={saturation} onChange={(v: number) => setColorGrading('saturation', v)} max={3} />
+        <Slider label="Contrast" value={contrast} onChange={(v: number) => setColorGrading('contrast', v)} max={3} />
+        <Slider label="Brightness" value={brightness} onChange={(v: number) => setColorGrading('brightness', v)} max={3} />
+        <Slider label="Exposure" value={exposure} onChange={(v: number) => setColorGrading('exposure', v)} max={3} />
       </div>
     </div>
   );

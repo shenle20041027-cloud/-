@@ -8,12 +8,13 @@ import { TextPanel } from '@/components/layout/TextPanel';
 import { PresetPanel } from '@/components/layout/PresetPanel';
 import { ColorPanel } from '@/components/layout/ColorPanel';
 import { ControlPanel } from '@/components/layout/ControlPanel';
+import { CameraPanel } from '@/components/layout/CameraPanel'; // We will create this
 import { Visualizer } from '@/components/visualizer/Visualizer';
-import { Play, Settings2, Sparkles, Monitor, Focus } from 'lucide-react';
+import { Play, Settings2, Sparkles, Monitor, Focus, Volume2, Type, Aperture, PaintBucket, LayoutGrid, Sliders } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
 export default function App() {
-  const { audioReady, setAudioReady, inputGain, language, setLanguage, isFullscreen } = useStore();
+  const { audioReady, setAudioReady, inputGain, language, setLanguage, isFullscreen, activeLeftPanel, setActiveLeftPanel } = useStore();
   const [initError, setInitError] = useState('');
   const i18n = t[language];
 
@@ -21,8 +22,15 @@ export default function App() {
     let animationFrameId: number;
     
     const renderLoop = () => {
-      const currentGain = useStore.getState().inputGain;
-      audioEngine.update(currentGain);
+      const state = useStore.getState();
+      audioEngine.update(state.inputGain, {
+        subBassSense: state.subBassSense,
+        bassSense: state.bassSense,
+        midSense: state.midSense,
+        trebleSense: state.trebleSense,
+        noiseGate: state.noiseGate,
+        beatMultiplier: state.beatMultiplier
+      });
       animationFrameId = requestAnimationFrame(renderLoop);
     };
 
@@ -78,90 +86,146 @@ export default function App() {
     );
   }
 
+  // Left Dock specific rendering
+  const renderLeftPanelContent = () => {
+    switch (activeLeftPanel) {
+      case 'Audio': return <AudioPanel />;
+      case 'Text': return <TextPanel />;
+      case 'Camera': return <CameraPanel />;
+      case 'Presets': return <PresetPanel />;
+      default: return <PresetPanel />;
+    }
+  };
+
   return (
-    <div className="w-screen h-screen bg-[#030205] text-white flex p-4 gap-4 font-sans overflow-hidden">
+    <div className="w-screen h-screen bg-[#020202] text-white flex flex-col font-sans overflow-hidden">
       
       {/* Background Ambience */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-48 bg-purple-500/10 blur-[100px]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[200px] bg-purple-500/5 blur-[150px] pointer-events-none" />
+
+      {/* TOP STATUS BAR */}
+      {!isFullscreen && (
+        <header className="h-12 w-full flex items-center justify-between px-6 border-b border-white/10 bg-[#050505]/90 backdrop-blur-md z-20 shrink-0">
+          <div className="flex items-center gap-4">
+             <div className="w-6 h-6 bg-white text-black rounded-sm flex items-center justify-center">
+                <Sparkles size={14} />
+             </div>
+             <h1 className="text-xs font-bold tracking-widest uppercase">Nexus.VJ Workstation</h1>
+          </div>
+          <div className="flex items-center gap-6">
+             <div className="flex items-center gap-2 text-[10px] font-bold text-white/50 uppercase tracking-widest">
+               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+               Live Engine Status: Optimal
+             </div>
+             <button 
+                onClick={() => setLanguage(language === 'EN' ? 'ZH' : 'EN')}
+                className="text-[10px] uppercase font-bold text-white/40 hover:text-white transition-colors border border-white/10 px-2 py-1 rounded"
+              >
+                {language}
+              </button>
+          </div>
+        </header>
+      )}
+
+      {/* MAIN WORKSPACE REGION */}
+      <div className="flex-1 w-full h-full relative overflow-hidden flex">
+         
+         {/* LEFT DOCK (Fixed) */}
+         {!isFullscreen && (
+           <div className="w-14 h-full bg-[#050505] border-r border-white/10 flex flex-col items-center py-4 gap-4 z-20 shrink-0">
+              <button 
+                onClick={() => setActiveLeftPanel('Presets')} 
+                className={`p-2.5 rounded-lg transition-all ${activeLeftPanel==='Presets' ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+              >
+                <LayoutGrid size={18} />
+              </button>
+              <button 
+                onClick={() => setActiveLeftPanel('Audio')} 
+                className={`p-2.5 rounded-lg transition-all ${activeLeftPanel==='Audio' ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+              >
+                <Volume2 size={18} />
+              </button>
+              <button 
+                onClick={() => setActiveLeftPanel('Text')} 
+                className={`p-2.5 rounded-lg transition-all ${activeLeftPanel==='Text' ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+              >
+                <Type size={18} />
+              </button>
+              <button 
+                onClick={() => setActiveLeftPanel('Camera')} 
+                className={`p-2.5 rounded-lg transition-all ${activeLeftPanel==='Camera' ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+              >
+                <Aperture size={18} />
+              </button>
+           </div>
+         )}
+         
+         {/* RESIZABLE PANELS REPLACED WITH STANDARD FLEX */}
+         <div className="flex-1 flex w-full h-full">
+            
+            {/* LEFT CONFIG PANEL */}
+            {!isFullscreen && (
+              <div className="w-[300px] shrink-0 bg-[#0a0a0c] relative z-10 flex flex-col items-stretch h-full border-r border-white/10">
+                 <div className="w-full h-full overflow-y-auto no-scrollbar pb-24">
+                   {renderLeftPanelContent()}
+                 </div>
+              </div>
+            )}
+
+            {/* CENTER CANVAS & TIMELINE */}
+            <div className="flex-1 bg-black relative group h-full flex flex-col min-w-0">
+               <div className="flex-1 relative group min-h-0">
+                 <Visualizer />
+                 
+                 {/* Fullscreen UI trigger */}
+                  <button 
+                    onClick={() => useStore.getState().setIsFullscreen(!isFullscreen)}
+                    className="absolute bottom-6 right-6 z-50 p-4 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 hover:scale-110 transition-all hover:bg-white hover:text-black"
+                  >
+                    <Focus size={20} />
+                  </button>
+               </div>
+               
+               {!isFullscreen && (
+                 <div className="h-[150px] shrink-0 bg-[#050505] relative overflow-hidden border-t border-white/10 flex flex-col">
+                    <div className="flex items-center px-4 h-8 bg-white/5 border-b border-white/5 shrink-0">
+                       <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Performance Timeline</span>
+                    </div>
+                    <div className="flex-1 p-4 flex flex-col justify-center gap-2 overflow-hidden opacity-50 pointer-events-none">
+                       {/* Decorative timeline tracks */}
+                       <div className="w-full h-4 bg-white/5 rounded-full flex items-center px-2 border border-white/5">
+                         <div className="w-32 h-1.5 bg-blue-500 rounded-full shrink-0" />
+                         <div className="w-16 h-1.5 bg-purple-500 rounded-full shrink-0 ml-4" />
+                       </div>
+                       <div className="w-full h-4 bg-white/5 rounded-full flex items-center px-2 border border-white/5">
+                         <div className="w-8 h-1.5 bg-pink-500 rounded-full shrink-0 ml-8" />
+                         <div className="w-64 h-1.5 bg-green-500 rounded-full shrink-0 ml-12" />
+                       </div>
+                       <div className="w-full h-4 bg-white/5 rounded-full flex items-center px-2 border border-white/5">
+                         <div className="w-full h-1.5 bg-white/20 rounded-full shrink-0 ml-16" />
+                       </div>
+                    </div>
+                 </div>
+               )}
+            </div>
+
+            {/* RIGHT GLOBAL PANEL */}
+            {!isFullscreen && (
+              <div className="w-[340px] shrink-0 bg-[#0a0a0c] z-10 h-full border-l border-white/10">
+                <div className="w-full h-full overflow-y-auto no-scrollbar pb-32">
+                   <ScenePanel />
+                   <div className="h-px w-full bg-white/5" />
+                   <ColorPanel />
+                   <div className="h-px w-full bg-white/5" />
+                   <FxPanel />
+                   <div className="h-px w-full bg-white/5" />
+                   <ControlPanel />
+                </div>
+              </div>
+            )}
+            
+         </div>
       </div>
-
-      {/* LEFT PANEL */}
-      <aside className={`w-[340px] flex flex-col gap-4 z-10 transition-transform duration-500 ${isFullscreen ? '-translate-x-[120%]' : 'translate-x-0'}`}>
-        {/* Header Block */}
-        <div className="bg-[#0a0a0c]/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-6 shadow-2xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-8 h-8 bg-white text-black rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.4)]">
-                <Sparkles size={16} />
-             </div>
-             <div>
-                <h1 className="text-sm font-bold tracking-wide">Nexus.VJ</h1>
-                <p className="text-[10px] text-white/50 uppercase tracking-widest">{i18n.LIVE_ENGINE_ACTIVE}</p>
-             </div>
-          </div>
-          <button 
-            onClick={() => setLanguage(language === 'EN' ? 'ZH' : 'EN')}
-            className="text-[10px] uppercase font-bold text-white/40 hover:text-white transition-colors"
-          >
-            {language}
-          </button>
-        </div>
-
-        {/* Tools Block */}
-        <div className="flex-1 overflow-y-auto w-full bg-[#0a0a0c]/80 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl no-scrollbar flex flex-col">
-          <AudioPanel />
-          <div className="h-px w-full bg-white/5" />
-          <TextPanel />
-          <div className="h-px w-full bg-white/5" />
-          <PresetPanel />
-        </div>
-      </aside>
-
-      {/* MAIN VISUALIZER WORKSPACE */}
-      <main className="flex-1 relative z-10 rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black group">
-        <Visualizer />
-        
-        {/* HUD Overlay */}
-        {!isFullscreen && (
-          <div className="absolute top-6 left-6 flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-[10px] font-bold uppercase tracking-widest text-white/50">
-             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-             Rendering at 60fps
-          </div>
-        )}
-      </main>
-
-      {/* RIGHT PANEL */}
-      <aside className={`w-[340px] flex flex-col gap-4 z-10 transition-transform duration-500 ${isFullscreen ? 'translate-x-[120%]' : 'translate-x-0'}`}>
-        <div className="flex-1 overflow-y-auto w-full bg-[#0a0a0c]/80 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl no-scrollbar flex flex-col">
-          <ScenePanel />
-          <div className="h-px w-full bg-white/5" />
-          <ColorPanel />
-          <div className="h-px w-full bg-white/5" />
-          <FxPanel />
-          <div className="h-px w-full bg-white/5" />
-          <ControlPanel />
-        </div>
-
-        {/* Mini Status Footer */}
-        <div className="bg-[#0a0a0c]/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-2">
-          <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-widest">
-            <span>CPU</span>
-            <span className="text-white">14%</span>
-          </div>
-          <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-widest">
-            <span>MEM</span>
-            <span className="text-white">2.1GB</span>
-          </div>
-        </div>
-      </aside>
-      
-      {/* Fullscreen UI trigger */}
-      <button 
-        onClick={() => useStore.setState({ isFullscreen: !isFullscreen })}
-        className="absolute bottom-8 right-8 z-50 p-4 rounded-full bg-white text-black shadow-[0_0_30px_rgba(255,255,255,0.4)] opacity-0 group-hover:opacity-100 hover:scale-110 transition-all hover:opacity-100"
-      >
-        <Focus size={24} />
-      </button>
 
     </div>
   );

@@ -42,12 +42,29 @@ interface VisualizerState {
 
   // Enhancements
   baseColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  bgColor: string;
   saturation: number;
   contrast: number;
   brightness: number;
-  setColorGrading: (key: 'baseColor' | 'saturation' | 'contrast' | 'brightness', value: string | number) => void;
+  gamma: number;
+  exposure: number;
+  setColorGrading: (key: Extract<keyof VisualizerState, 'baseColor' | 'secondaryColor' | 'accentColor' | 'bgColor' | 'saturation' | 'contrast' | 'brightness' | 'gamma' | 'exposure'>, value: string | number) => void;
+
+  // Audio Advanced
+  subBassSense: number;
+  bassSense: number;
+  midSense: number;
+  trebleSense: number;
+  noiseGate: number;
+  beatMultiplier: number;
+  setAudioParam: (key: Extract<keyof VisualizerState, 'subBassSense' | 'bassSense' | 'midSense' | 'trebleSense' | 'noiseGate' | 'beatMultiplier'>, value: number) => void;
 
   isFullscreen: boolean;
+  setIsFullscreen: (val: boolean) => void;
+  activeLeftPanel: string;
+  setActiveLeftPanel: (panel: string) => void;
   applyPreset: (presetId: string) => void;
 }
 
@@ -92,25 +109,44 @@ export const useStore = create<VisualizerState>((set) => ({
   setTextEngine: (key, value) => set({ [key]: value }),
 
   baseColor: '#00f3ff',
+  secondaryColor: '#bf00ff',
+  accentColor: '#ffffff',
+  bgColor: '#030008',
   saturation: 1.0,
   contrast: 1.0,
   brightness: 1.0,
-  setColorGrading: (key, value) => set({ [key]: value }),
+  gamma: 1.0,
+  exposure: 1.2,
+  setColorGrading: (key, value) => set({ [key]: value as any }),
+
+  subBassSense: 1.0,
+  bassSense: 1.0,
+  midSense: 1.0,
+  trebleSense: 1.0,
+  noiseGate: 0.1,
+  beatMultiplier: 1.0,
+  setAudioParam: (key, value) => set({ [key]: value }),
 
   isFullscreen: false,
+  setIsFullscreen: (val) => set({ isFullscreen: val }),
+  activeLeftPanel: 'Presets',
+  setActiveLeftPanel: (panel) => set({ activeLeftPanel: panel }),
   applyPreset: (presetId) => {
     switch(presetId) {
        case 'Cyberpunk':
-          set({ currentScene: 'Cyber', baseColor: '#00f3ff', bloomIntensity: 2, textAnimStyle: 'Glitch' });
+          set({ currentScene: 'Cyber', baseColor: '#00f3ff', secondaryColor: '#bf00ff', bloomIntensity: 2, textAnimStyle: 'Glitch' });
           break;
        case 'Liquid Dream':
-          set({ currentScene: 'Liquid', baseColor: '#b026ff', bloomIntensity: 1.5, textAnimStyle: 'Floating' });
+          set({ currentScene: 'Liquid', baseColor: '#b026ff', secondaryColor: '#00ccff', bloomIntensity: 1.5, textAnimStyle: 'Floating' });
           break;
        case 'Neon Pulse':
-          set({ currentScene: 'Pulse', baseColor: '#39ff14', glitchActive: true, bloomIntensity: 3, textAnimStyle: 'Beat' });
+          set({ currentScene: 'Pulse', baseColor: '#39ff14', secondaryColor: '#ff003c', glitchActive: true, bloomIntensity: 3, textAnimStyle: 'Beat' });
           break;
        case 'Dark Space':
-          set({ currentScene: 'Void', baseColor: '#ffffff', bloomIntensity: 1, textAnimStyle: 'Massive' });
+          set({ currentScene: 'Void', baseColor: '#ffffff', secondaryColor: '#444444', bloomIntensity: 1, textAnimStyle: 'Massive' });
+          break;
+       case 'Dumbar Base':
+          set({ currentScene: 'Dumbar', baseColor: '#ffffff', secondaryColor: '#000000', bgColor: '#050505', textAnimStyle: 'Dumbar', contrast: 1.5, saturation: 1.0, textInput: 'HYPE' });
           break;
     }
   }
