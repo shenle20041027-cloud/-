@@ -1,7 +1,7 @@
-import { useStore } from '@/store/useStore';
-import { Type, Save, RotateCcw, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Save, RotateCcw, Trash2, Type } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useState, useEffect } from 'react';
+import { useStore } from '@/store/useStore';
 
 const TextSlider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) => (
   <div className="flex flex-col gap-2 mb-4">
@@ -40,10 +40,9 @@ export function TextPanel() {
   ];
 
   const handleApply = () => {
-    setTextEngine('textInput', localText || " ");
+    setTextEngine('textInput', localText || ' ');
     const lower = localText.toLowerCase();
-    
-    // Auto sync with visuals occasionally
+
     if (lower.includes('cyber') || lower.includes('future') || lower.includes('glitch')) {
       applyPreset('Cyberpunk');
     } else if (lower.includes('dream') || lower.includes('ocean') || lower.includes('water')) {
@@ -63,7 +62,7 @@ export function TextPanel() {
 
   const handleClear = () => {
     setLocalText('');
-    setTextEngine('textInput', ' '); // Use a space so canvas doesn't crash
+    setTextEngine('textInput', ' ');
   };
 
   return (
@@ -72,18 +71,18 @@ export function TextPanel() {
         <Type size={16} className="text-purple-400" />
         <span className="text-[10px] font-bold uppercase tracking-widest">{i18n.TEXT_ENGINE || 'AI Reactive Text'}</span>
       </div>
-      
+
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
           <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest">
             {i18n.INPUT_TEXT || 'Drive Visuals via Text'}
           </label>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={localText}
             onChange={(e) => {
               setLocalText(e.target.value);
-              setTextEngine('textInput', e.target.value || " ");
+              setTextEngine('textInput', e.target.value || ' ');
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleApply()}
             className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-[13px] font-mono text-white outline-none focus:border-purple-500/50 focus:bg-white/5 transition-all shadow-inner placeholder:text-white/20"
@@ -107,40 +106,25 @@ export function TextPanel() {
             {i18n.ANIMATION_STYLE || 'Typography Style'}
           </label>
           <div className="relative">
-            <select 
+            <select
               value={textAnimStyle}
               onChange={(e) => setTextEngine('textAnimStyle', e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-[13px] font-mono text-white outline-none focus:border-purple-500/50 focus:bg-white/5 transition-all appearance-none cursor-pointer"
             >
-              {styles.map(style => (
+              {styles.map((style) => (
                 <option key={style.id} value={style.id}>{style.label}</option>
               ))}
             </select>
             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/30 text-[10px]">
-              ▼
+              v
             </div>
           </div>
         </div>
 
         <div className="pt-2">
-          <TextSlider 
-            label={i18n.GLOW_AMOUNT || "Glow Intensity"} 
-            value={textGlow} 
-            onChange={(v: number) => setTextEngine('textGlow', v)} 
-            max={5} 
-          />
-          <TextSlider 
-            label={i18n.MOTION_SPEED || "Motion Speed"} 
-            value={textSpeed} 
-            onChange={(v: number) => setTextEngine('textSpeed', v)} 
-            max={3} 
-          />
-          <TextSlider 
-            label={i18n.REACTIVE_INTENSITY || "Reactive Intensity"} 
-            value={textReactive} 
-            onChange={(v: number) => setTextEngine('textReactive', v)} 
-            max={3} 
-          />
+          <TextSlider label={i18n.GLOW_AMOUNT || 'Glow Intensity'} value={textGlow} onChange={(v: number) => setTextEngine('textGlow', v)} max={5} />
+          <TextSlider label={i18n.MOTION_SPEED || 'Motion Speed'} value={textSpeed} onChange={(v: number) => setTextEngine('textSpeed', v)} max={3} />
+          <TextSlider label={i18n.REACTIVE_INTENSITY || 'Reactive Intensity'} value={textReactive} onChange={(v: number) => setTextEngine('textReactive', v)} max={3} />
         </div>
       </div>
     </div>

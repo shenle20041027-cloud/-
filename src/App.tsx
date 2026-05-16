@@ -9,12 +9,14 @@ import { PresetPanel } from '@/components/layout/PresetPanel';
 import { ColorPanel } from '@/components/layout/ColorPanel';
 import { ControlPanel } from '@/components/layout/ControlPanel';
 import { CameraPanel } from '@/components/layout/CameraPanel'; // We will create this
+import { AudioUrlPanel } from '@/components/layout/AudioUrlPanel';
+import { FrequencyResponsePanel } from '@/components/layout/FrequencyResponsePanel';
 import { Visualizer } from '@/components/visualizer/Visualizer';
 import { Play, Settings2, Sparkles, Monitor, Focus, Volume2, Type, Aperture, PaintBucket, LayoutGrid, Sliders } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
 export default function App() {
-  const { audioReady, setAudioReady, inputGain, language, setLanguage, isFullscreen, activeLeftPanel, setActiveLeftPanel } = useStore();
+  const { audioReady, setAudioReady, language, setLanguage, setAudioSourceMode, isFullscreen, activeLeftPanel, setActiveLeftPanel } = useStore();
   const [initError, setInitError] = useState('');
   const i18n = t[language];
 
@@ -45,7 +47,8 @@ export default function App() {
 
   const handleStart = async () => {
     try {
-      await audioEngine.initialize();
+      const mode = await audioEngine.initialize();
+      setAudioSourceMode(mode);
       setAudioReady(true);
     } catch (err: any) {
       setInitError('Failed to access microphone. Please allow permissions.');
@@ -218,6 +221,10 @@ export default function App() {
                    <ColorPanel />
                    <div className="h-px w-full bg-white/5" />
                    <FxPanel />
+                   <div className="h-px w-full bg-white/5" />
+                   <AudioUrlPanel />
+                   <div className="h-px w-full bg-white/5" />
+                   <FrequencyResponsePanel />
                    <div className="h-px w-full bg-white/5" />
                    <ControlPanel />
                 </div>

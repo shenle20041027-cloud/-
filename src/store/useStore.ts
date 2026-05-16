@@ -1,8 +1,14 @@
 import { create } from 'zustand';
 
+export type AudioSourceMode = 'microphone' | 'url' | 'simulation';
+
 interface VisualizerState {
   audioReady: boolean;
   setAudioReady: (ready: boolean) => void;
+  audioSourceMode: AudioSourceMode;
+  setAudioSourceMode: (mode: AudioSourceMode) => void;
+  audioUrl: string;
+  setAudioUrl: (url: string) => void;
   
   // Language
   language: 'EN' | 'ZH';
@@ -61,6 +67,19 @@ interface VisualizerState {
   beatMultiplier: number;
   setAudioParam: (key: Extract<keyof VisualizerState, 'subBassSense' | 'bassSense' | 'midSense' | 'trebleSense' | 'noiseGate' | 'beatMultiplier'>, value: number) => void;
 
+  // Frequency Response Controls (频率响应控制)
+  lowFreqReact: number;           // 低频反应 (20-250Hz)
+  midFreqReact: number;           // 中频反应 (250-2000Hz)
+  highFreqReact: number;          // 高频反应 (2000-20000Hz)
+  frequencySmoothing: number;     // 频率平滑值
+  frequencyEnabled: boolean;      // 是否启用频率响应
+  setFrequencyReact: (key: Extract<keyof VisualizerState, 'lowFreqReact' | 'midFreqReact' | 'highFreqReact' | 'frequencySmoothing' | 'frequencyEnabled'>, value: number | boolean) => void;
+
+  // URL Audio Specific
+  urlAudioSmoothing: number;      // URL音频的平滑参数
+  urlAudioBeatSensitivity: number; // URL音频的节拍敏感度
+  setUrlAudioParam: (key: Extract<keyof VisualizerState, 'urlAudioSmoothing' | 'urlAudioBeatSensitivity'>, value: number) => void;
+
   isFullscreen: boolean;
   setIsFullscreen: (val: boolean) => void;
   activeLeftPanel: string;
@@ -71,6 +90,10 @@ interface VisualizerState {
 export const useStore = create<VisualizerState>((set) => ({
   audioReady: false,
   setAudioReady: (ready) => set({ audioReady: ready }),
+  audioSourceMode: 'microphone',
+  setAudioSourceMode: (mode) => set({ audioSourceMode: mode }),
+  audioUrl: '',
+  setAudioUrl: (url) => set({ audioUrl: url }),
 
   // Language
   language: 'EN',
@@ -102,7 +125,7 @@ export const useStore = create<VisualizerState>((set) => ({
 
   // Text Engine Defaults
   textInput: 'NEONPULSE',
-  textAnimStyle: 'Cinematic Title',
+  textAnimStyle: 'Cinematic',
   textGlow: 1.0,
   textSpeed: 1.0,
   textReactive: 1.0,
@@ -126,6 +149,19 @@ export const useStore = create<VisualizerState>((set) => ({
   noiseGate: 0.1,
   beatMultiplier: 1.0,
   setAudioParam: (key, value) => set({ [key]: value }),
+
+  // Frequency Response Defaults
+  lowFreqReact: 1.5,
+  midFreqReact: 1.0,
+  highFreqReact: 1.2,
+  frequencySmoothing: 0.8,
+  frequencyEnabled: true,
+  setFrequencyReact: (key, value) => set({ [key]: value }),
+
+  // URL Audio Specific Defaults
+  urlAudioSmoothing: 0.8,
+  urlAudioBeatSensitivity: 1.3,
+  setUrlAudioParam: (key, value) => set({ [key]: value }),
 
   isFullscreen: false,
   setIsFullscreen: (val) => set({ isFullscreen: val }),
