@@ -5,6 +5,7 @@ import { Text } from '@react-three/drei';
 import { GlitchMode, BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import { audioEngine } from '@/lib/AudioEngine';
+import { frequencyVisualEngine } from '@/lib/FrequencyVisualEngine';
 import { useStore } from '@/store/useStore';
 
 // === WEBCAM HOOK ===
@@ -250,9 +251,16 @@ const cyberFragment = `
 `;
 
 function VoidScene() {
-  const { baseColor, speed } = useStore();
+  const { baseColor, speed, lowFreqReact, midFreqReact, highFreqReact, frequencyEnabled, audioSourceMode } = useStore();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const pointsRef = useRef<THREE.Points>(null);
+  
+  // 更新频率引擎
+  useEffect(() => {
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      frequencyVisualEngine.setReactivity(lowFreqReact, midFreqReact, highFreqReact, 0.8);
+    }
+  }, [lowFreqReact, midFreqReact, highFreqReact, frequencyEnabled, audioSourceMode]);
   
   const [positions] = useMemo(() => {
     const count = 5000;
@@ -269,9 +277,22 @@ function VoidScene() {
     if(!materialRef.current || !pointsRef.current) return;
     const { subBass, bass, mid, energy, beat } = audioEngine.current;
     
+    // 基础旋转
+    let rotationX = delta * 0.05 * speed * bass;
+    let rotationY = delta * 0.1 * speed * (1 + beat * 5.0 + subBass);
+    let scaleMultiplier = 1.0 + (beat * 0.1);
+    
+    // 应用频率响应增强
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      const freqEffects = frequencyVisualEngine.computeEffects();
+      rotationX *= (1 + freqEffects.lowFreqScale);
+      rotationY *= freqEffects.rotationIntensity;
+      scaleMultiplier = 1.0 + (beat * freqEffects.lowFreqScale);
+    }
+    
     // Beat causes sudden rotation surge
-    pointsRef.current.rotation.y += delta * 0.1 * speed * (1 + beat * 5.0 + subBass);
-    pointsRef.current.rotation.x += delta * 0.05 * speed * bass;
+    pointsRef.current.rotation.y += rotationY;
+    pointsRef.current.rotation.x += rotationX;
     
     materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
     materialRef.current.uniforms.uSubBass.value = subBass;
@@ -281,7 +302,7 @@ function VoidScene() {
     materialRef.current.uniforms.uColor.value.set(baseColor);
     
     // Additive scale on beat
-    pointsRef.current.scale.setScalar(1.0 + (beat * 0.1));
+    pointsRef.current.scale.setScalar(scaleMultiplier);
   });
 
   return (
@@ -389,13 +410,28 @@ const liquidFragment = `
 `;
 
 function LiquidScene() {
-  const { speed } = useStore();
+  const { speed, lowFreqReact, midFreqReact, highFreqReact, frequencyEnabled, audioSourceMode } = useStore();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  
+  // 更新频率引擎
+  useEffect(() => {
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      frequencyVisualEngine.setReactivity(lowFreqReact, midFreqReact, highFreqReact, 0.8);
+    }
+  }, [lowFreqReact, midFreqReact, highFreqReact, frequencyEnabled, audioSourceMode]);
   
   useFrame((state) => {
     if(!materialRef.current) return;
     const { bass, lowMid, energy } = audioEngine.current;
-    materialRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
+    
+    // 应用频率响应增强
+    let timeMultiplier = speed;
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      const freqEffects = frequencyVisualEngine.computeEffects();
+      timeMultiplier *= freqEffects.rotationIntensity;
+    }
+    
+    materialRef.current.uniforms.uTime.value = state.clock.elapsedTime * timeMultiplier;
     materialRef.current.uniforms.uBass.value = bass;
     materialRef.current.uniforms.uLowMid.value = lowMid;
     materialRef.current.uniforms.uEnergy.value = energy;
@@ -422,8 +458,15 @@ function LiquidScene() {
 
 // 3. CYBER GRID (Perspective lines and glitching geometry)
 function CyberScene() {
-  const { speed, baseColor, textInput } = useStore();
+  const { speed, baseColor, textInput, lowFreqReact, midFreqReact, highFreqReact, frequencyEnabled, audioSourceMode } = useStore();
   const matRef = useRef<THREE.ShaderMaterial>(null);
+  
+  // 更新频率引擎
+  useEffect(() => {
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      frequencyVisualEngine.setReactivity(lowFreqReact, midFreqReact, highFreqReact, 0.8);
+    }
+  }, [lowFreqReact, midFreqReact, highFreqReact, frequencyEnabled, audioSourceMode]);
   
   // Use user text or default to "YOU"
   const textTexture = useTextTexture(textInput || "YOU");
@@ -431,9 +474,19 @@ function CyberScene() {
   useFrame((state) => {
     if(!matRef.current) return;
     const { bass, energy } = audioEngine.current;
+    
+    // 应用频率响应增强
+    let bassMultiplier = 1.0;
+    let energyMultiplier = 1.0;
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      const freqEffects = frequencyVisualEngine.computeEffects();
+      bassMultiplier = freqEffects.glitchIntensityMultiplier;
+      energyMultiplier = freqEffects.bloomIntensityMultiplier;
+    }
+    
     matRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
-    matRef.current.uniforms.uBass.value = bass;
-    matRef.current.uniforms.uEnergy.value = energy;
+    matRef.current.uniforms.uBass.value = bass * bassMultiplier;
+    matRef.current.uniforms.uEnergy.value = energy * energyMultiplier;
     matRef.current.uniforms.uColor.value.set(baseColor);
     matRef.current.uniforms.tText.value = textTexture;
   });
@@ -528,13 +581,28 @@ const pulseFragment = `
 
 function PulseScene() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
-  const { baseColor } = useStore();
+  const { baseColor, lowFreqReact, midFreqReact, highFreqReact, frequencyEnabled, audioSourceMode } = useStore();
+
+  // 更新频率引擎
+  useEffect(() => {
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      frequencyVisualEngine.setReactivity(lowFreqReact, midFreqReact, highFreqReact, 0.8);
+    }
+  }, [lowFreqReact, midFreqReact, highFreqReact, frequencyEnabled, audioSourceMode]);
 
   useFrame((state) => {
     if(!matRef.current) return;
     const { bass, treble, beat } = audioEngine.current;
+    
+    // 应用频率响应增强
+    let bassMultiplier = 1.0;
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      const freqEffects = frequencyVisualEngine.computeEffects();
+      bassMultiplier = freqEffects.lowFreqScale;
+    }
+    
     matRef.current.uniforms.uTime.value = state.clock.elapsedTime;
-    matRef.current.uniforms.uBass.value = bass;
+    matRef.current.uniforms.uBass.value = bass * bassMultiplier;
     matRef.current.uniforms.uBeat.value = beat;
     matRef.current.uniforms.uTreble.value = treble;
     matRef.current.uniforms.uColor.value.set(baseColor);
@@ -799,19 +867,40 @@ function VisualText() {
 
 // === HIGH-END POST PROCESSING ===
 function PostProcessing() {
-  const { bloomIntensity, rgbSplitAmount, glitchActive } = useStore();
+  const { bloomIntensity, rgbSplitAmount, glitchActive, lowFreqReact, midFreqReact, highFreqReact, frequencySmoothing, frequencyEnabled, audioSourceMode } = useStore();
   const [dynamicBloom, setDynamicBloom] = useState(bloomIntensity);
   const [dynamicSplit, setDynamicSplit] = useState(rgbSplitAmount);
+
+  // 更新频率视觉引擎的参数
+  useEffect(() => {
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      frequencyVisualEngine.setReactivity(lowFreqReact, midFreqReact, highFreqReact, frequencySmoothing);
+    }
+  }, [lowFreqReact, midFreqReact, highFreqReact, frequencySmoothing, frequencyEnabled, audioSourceMode]);
 
   useFrame(() => {
     const { energy, beat, bass } = audioEngine.current;
     
-    // Dynamic bloom
-    const targetBloom = bloomIntensity + (energy * 0.5) + (beat * 2.0);
+    // 动态bloom（应用频率增强）
+    let targetBloom = bloomIntensity + (energy * 0.5) + (beat * 2.0);
+    
+    // 如果启用了频率响应且使用URL音频
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      const freqEffects = frequencyVisualEngine.computeEffects();
+      targetBloom *= freqEffects.bloomIntensityMultiplier;
+    }
+    
     setDynamicBloom(prev => prev + (targetBloom - prev) * 0.1); 
 
-    // Dynamic Chromatic Aberration
-    const targetSplit = rgbSplitAmount + (bass * 0.015) + (beat * 0.03);
+    // 动态色差（应用频率增强）
+    let targetSplit = rgbSplitAmount + (bass * 0.015) + (beat * 0.03);
+    
+    // 如果启用了频率响应且使用URL音频
+    if (frequencyEnabled && audioSourceMode === 'url') {
+      const freqEffects = frequencyVisualEngine.computeEffects();
+      targetSplit *= freqEffects.aberrationMultiplier;
+    }
+    
     setDynamicSplit(prev => prev + (targetSplit - prev) * 0.2);
   });
 
