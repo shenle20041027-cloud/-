@@ -119,9 +119,9 @@ export default function App() {
              </div>
              <button 
                 onClick={() => setLanguage(language === 'EN' ? 'ZH' : 'EN')}
-                className="text-[10px] uppercase font-bold text-white/40 hover:text-white transition-colors border border-white/10 px-2 py-1 rounded"
+                className="text-[11px] font-bold text-white/60 hover:text-white hover:bg-white/10 transition-colors border border-white/20 px-3 py-1 bg-black/50 rounded-lg shadow-sm"
               >
-                {language}
+                {language === 'EN' ? '[ 中文 / EN ]' : '[ EN / 中文 ]'}
               </button>
           </div>
         </header>

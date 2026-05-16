@@ -140,13 +140,13 @@ export const useStore = create<VisualizerState>((set) => ({
           set({ currentScene: 'Liquid', baseColor: '#b026ff', secondaryColor: '#00ccff', bloomIntensity: 1.5, textAnimStyle: 'Floating' });
           break;
        case 'Neon Pulse':
-          set({ currentScene: 'Pulse', baseColor: '#39ff14', secondaryColor: '#ff003c', glitchActive: true, bloomIntensity: 3, textAnimStyle: 'Beat' });
+          set({ currentScene: 'Pulse', baseColor: '#ff007f', secondaryColor: '#ff003c', glitchActive: true, bloomIntensity: 3, textAnimStyle: 'Beat' });
           break;
        case 'Dark Space':
           set({ currentScene: 'Void', baseColor: '#ffffff', secondaryColor: '#444444', bloomIntensity: 1, textAnimStyle: 'Massive' });
           break;
        case 'Dumbar Base':
-          set({ currentScene: 'Dumbar', baseColor: '#ffffff', secondaryColor: '#000000', bgColor: '#050505', textAnimStyle: 'Dumbar', contrast: 1.5, saturation: 1.0, textInput: 'HYPE' });
+          set({ currentScene: 'Dumbar', baseColor: '#ffffff', secondaryColor: '#000000', bgColor: '#050505', textAnimStyle: 'Dumbar', contrast: 1.5, saturation: 1.0 });
           break;
     }
   }

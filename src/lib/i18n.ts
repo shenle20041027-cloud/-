@@ -64,6 +64,10 @@ export const t = {
     MOTION_SPEED: "Motion Speed",
     REACTIVE_INTENSITY: "Reactive Intensity",
     APPLY_TO_SCENE: "Apply To Scene",
+    BTN_SAVE: "SAVE / APPLY",
+    BTN_RESET: "RESET",
+    BTN_CLEAR: "CLEAR",
+    TEXT_INPUT_PLACEHOLDER: "e.g. Cyber Future...",
     
     // Text Anim Styles
     CinematicTitle: "Cinematic Title",
@@ -140,6 +144,10 @@ export const t = {
     MOTION_SPEED: "运动速度",
     REACTIVE_INTENSITY: "互动强度",
     APPLY_TO_SCENE: "应用到场景",
+    BTN_SAVE: "保存 / 应用",
+    BTN_RESET: "重置",
+    BTN_CLEAR: "清空",
+    TEXT_INPUT_PLACEHOLDER: "例如: 未来音乐会 2026",
 
     // Text Anim Styles
     CinematicTitle: "电影级标题",

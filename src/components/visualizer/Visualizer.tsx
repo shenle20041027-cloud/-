@@ -75,6 +75,180 @@ const voidFragment = `
   }
 `;
 
+function useTextTexture(text: string) {
+  const canvas = useMemo(() => document.createElement('canvas'), []);
+  const texture = useMemo(() => new THREE.CanvasTexture(canvas), [canvas]);
+
+  useEffect(() => {
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 1024, 512);
+
+    // Give it a more aggressive visual look
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, 1024, 512);
+    
+    // Draw the "action" style long horizontal streak trails
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.font = 'italic 900 280px Inter, system-ui, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Draw multiple strokes spreading outwards
+    const trailCount = 30;
+    for (let i = 0; i < trailCount; i++) {
+      const offsetX = Math.pow(i, 1.4) * 8.0; // Exponential spread
+      ctx.globalAlpha = Math.max(0.0, 1.0 - (i / trailCount));
+      // Left trail
+      ctx.strokeText(text, 512 - offsetX, 280);
+      // Right trail
+      ctx.strokeText(text, 512 + offsetX, 280);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Draw the core glitchy fill text
+    ctx.fillStyle = 'white';
+    ctx.font = 'italic 900 320px Inter, system-ui, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillText(text, 512, 280);
+
+    // Apply minor smearing horizontally on the basic form to bake in some motion blur
+    ctx.globalAlpha = 0.3;
+    ctx.fillText(text, 512 - 20, 280);
+    ctx.fillText(text, 512 + 20, 280);
+    ctx.globalAlpha = 1.0;
+
+    texture.needsUpdate = true;
+  }, [text, canvas, texture]);
+
+  return texture;
+}
+
+const cyberFragment = `
+  uniform float uTime;
+  uniform float uBass;
+  uniform float uEnergy;
+  uniform vec3 uColor;
+  uniform sampler2D tText;
+  varying vec2 vUv;
+
+  float hash(float n) { return fract(sin(n) * 43758.5453123); }
+  float hash2(vec2 p) {
+      return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+  }
+  
+  // 3D grid function
+  float drawGrid(vec2 uv, float tilt, float pan) {
+      uv.y -= tilt;
+      if (uv.y < 0.0) return 0.0; // above horizon
+      float z = 1.0 / uv.y;
+      vec2 gridUv = vec2(uv.x * z + pan, z - uTime * 3.0);
+      float gridX = abs(fract(gridUv.x * 5.0) - 0.5);
+      float gridY = abs(fract(gridUv.y * 5.0) - 0.5);
+      float lineX = smoothstep(0.08, 0.0, gridX / z * 1.5);
+      float lineY = smoothstep(0.08, 0.0, gridY / z * 1.5);
+      float line = max(lineX, lineY);
+      return line * exp(-z * 0.08); // fade with depth
+  }
+
+  void main() {
+    vec2 p = vUv;
+    
+    // Global Block Glitch Displacement
+    float sliceY = floor(p.y * 40.0); 
+    float offset = hash(sliceY + floor(uTime * 15.0)) * 2.0 - 1.0;
+    
+    float applyM = step(0.85 - uEnergy*0.5 - uBass*0.3, hash(sliceY * 12.3 + floor(uTime * 8.0)));
+    float displacement = offset * 0.2 * applyM * (1.0 + uBass * 1.5);
+    
+    vec2 pos = p * 2.0 - 1.0;
+    
+    // Apply glitch directly to global screen coordinates
+    pos.x += displacement;
+    pos.x += sin(pos.y * 15.0 + uTime * 10.0) * 0.008 * (uEnergy + uBass);
+
+    // Floor & Ceiling Grid
+    float floorGrid = drawGrid(pos, -0.3, 0.0);
+    float ceilGrid = drawGrid(-pos, -0.3, sin(uTime)*0.5); 
+    
+    // Add pulsing background elements
+    vec3 stageColor = uColor * (0.02 + floorGrid * 0.6 + ceilGrid * 0.3) * (1.0 + uBass * 2.0);
+    
+    // Distant neon lasers
+    float laserId = floor(pos.x * 20.0 + uTime * 2.0);
+    float laser = step(0.95, hash(laserId)) * step(0.5, pos.y);
+    stageColor += laser * uColor * (0.2 + uEnergy * 0.8) * exp(-abs(pos.y) * 2.0);
+    
+    vec2 textUv = p;
+    textUv.x += displacement;
+    textUv.x += sin(textUv.y * 30.0 + uTime * 10.0) * 0.008 * (uEnergy + uBass);
+    
+    vec4 tex = texture2D(tText, textUv);
+    float mask = tex.r;
+
+    // Glitchy RGB split
+    float rMask = texture2D(tText, textUv + vec2(0.025 + uBass*0.06, 0.0)).r;
+    float bMask = texture2D(tText, textUv - vec2(0.025 + uBass*0.06, 0.0)).r;
+    
+    // Glow mask for text
+    float glowMask = 0.0;
+    float gw = 0.01 + uBass * 0.02;
+    glowMask += texture2D(tText, textUv + vec2(gw, gw)).r;
+    glowMask += texture2D(tText, textUv + vec2(-gw, -gw)).r;
+    glowMask += texture2D(tText, textUv + vec2(gw, -gw)).r;
+    glowMask += texture2D(tText, textUv + vec2(-gw, gw)).r;
+    glowMask += texture2D(tText, textUv + vec2(gw*2.0, 0.0)).r;
+    glowMask += texture2D(tText, textUv + vec2(-gw*2.0, 0.0)).r;
+    glowMask /= 6.0;
+    glowMask = smoothstep(0.1, 0.6, glowMask); 
+    
+    vec3 glowColor = uColor; // Preset base color
+    
+    vec3 finalCol = stageColor;
+    
+    // Add text and glow
+    if (glowMask > 0.05) {
+       finalCol = mix(finalCol, glowColor * (1.5 + uBass * 3.0), glowMask);
+    }
+
+    // Text Inner fill (scanlines)
+    float stripe = step(0.5, fract(textUv.y * 60.0 - uTime * 15.0));
+    vec3 textFill = mix(vec3(0.0, 0.0, 0.1), vec3(0.9, 1.0, 1.0), stripe);
+    
+    if (mask > 0.5) {
+       finalCol = mix(glowColor, textFill, 0.85); 
+    }
+
+    // Chromatic aberration fringes for the glitch
+    if (applyM > 0.0 && rMask > 0.5 && mask < 0.5) finalCol += vec3(1.0, 0.1, 0.4); 
+    if (applyM > 0.0 && bMask > 0.5 && mask < 0.5) finalCol += vec3(0.1, 0.5, 1.0); 
+    
+    // Global aberration on the stage when glitch happens
+    if (applyM > 0.0) {
+        float bFloor = drawGrid(pos - vec2(0.05, 0.0), -0.3, 0.0);
+        float rFloor = drawGrid(pos + vec2(0.05, 0.0), -0.3, 0.0);
+        finalCol += vec3(rFloor * 0.5, 0.0, bFloor * 0.5) * uColor;
+    }
+
+    // Global VFX: Screen static & Scanlines
+    float vignette = length(p * 2.0 - 1.0);
+    finalCol *= smoothstep(2.0, 0.5, vignette);
+    
+    float screenScanline = sin(pos.y * 800.0) * 0.05 + 0.95;
+    finalCol *= screenScanline;
+    
+    float noise = hash2(pos + uTime * 10.0) - 0.5;
+    finalCol += noise * 0.1 * (1.0 + uEnergy * 2.0);
+
+    // Hard clip color
+    finalCol = min(finalCol, 1.5);
+
+    gl_FragColor = vec4(finalCol, 1.0);
+  }
+`;
+
 function VoidScene() {
   const { baseColor, speed } = useStore();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
@@ -248,32 +422,45 @@ function LiquidScene() {
 
 // 3. CYBER GRID (Perspective lines and glitching geometry)
 function CyberScene() {
-  const group = useRef<THREE.Group>(null);
-  const { speed, baseColor } = useStore();
+  const { speed, baseColor, textInput } = useStore();
+  const matRef = useRef<THREE.ShaderMaterial>(null);
   
-  useFrame((state, delta) => {
-    if(!group.current) return;
-    const { bass, beat, highMid } = audioEngine.current;
-    group.current.position.z = (state.clock.elapsedTime * 5 * speed) % 2;
-    group.current.rotation.z += delta * (0.05 + highMid * 0.5);
-    group.current.scale.setScalar(1 + bass * 0.1 + beat * 0.2);
+  // Use user text or default to "YOU"
+  const textTexture = useTextTexture(textInput || "YOU");
+  
+  useFrame((state) => {
+    if(!matRef.current) return;
+    const { bass, energy } = audioEngine.current;
+    matRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
+    matRef.current.uniforms.uBass.value = bass;
+    matRef.current.uniforms.uEnergy.value = energy;
+    matRef.current.uniforms.uColor.value.set(baseColor);
+    matRef.current.uniforms.tText.value = textTexture;
   });
 
   return (
-    <group>
-      <group ref={group} position={[0,-2,-10]} rotation={[Math.PI/2, 0, 0]}>
-        <gridHelper args={[40, 40, baseColor, baseColor]} />
-      </group>
-      <group position={[0,2,-10]} rotation={[-Math.PI/2, 0, 0]}>
-        <gridHelper args={[40, 40, baseColor, baseColor]} />
-      </group>
-    </group>
+    <mesh position={[0,0,-1]}>
+      <planeGeometry args={[24, 12]} />
+      <shaderMaterial 
+        ref={matRef}
+        vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+        fragmentShader={cyberFragment}
+        uniforms={{
+          uTime: { value: 0 },
+          uBass: { value: 0 },
+          uEnergy: { value: 0 },
+          uColor: { value: new THREE.Color() },
+          tText: { value: null }
+        }}
+        transparent={false}
+        depthWrite={false}
+      />
+    </mesh>
   );
 }
 
-// 4. HOLOGRAM SCENE (Using Webcam via Shader)
-const hologramFragment = `
-  uniform sampler2D tCamera;
+// 4. PULSE SCENE (Aggressive Bass Stage)
+const pulseFragment = `
   uniform float uTime;
   uniform float uBass;
   uniform float uBeat;
@@ -281,26 +468,65 @@ const hologramFragment = `
   uniform vec3 uColor;
   varying vec2 vUv;
 
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+  }
+
+  // 3D grid function
+  float drawGrid(vec2 uv, float tilt, float pan) {
+      uv.y -= tilt;
+      if (uv.y < 0.0) return 0.0;
+      float z = 1.0 / uv.y;
+      vec2 gridUv = vec2(uv.x * z + pan, z - uTime * (5.0 + uBass * 10.0));
+      float gridX = abs(fract(gridUv.x * 5.0) - 0.5);
+      float gridY = abs(fract(gridUv.y * 5.0) - 0.5);
+      float lineX = smoothstep(0.1, 0.0, gridX / z * 1.5);
+      float lineY = smoothstep(0.1, 0.0, gridY / z * 1.5);
+      float line = max(lineX, lineY);
+      return line * exp(-z * 0.06);
+  }
+
   void main() {
-    vec2 p = vUv;
-    // Glitch effect on X based on bass and beat
-    if(sin(p.y * 100.0 + uTime) > 0.9) {
-      p.x += (sin(uTime * 10.0) * 0.02 * (uBass + uBeat));
-    }
+    vec2 p = vUv * 2.0 - 1.0;
     
-    vec4 cam = texture2D(tCamera, p);
-    float luma = dot(cam.rgb, vec3(0.299, 0.587, 0.114));
+    // Beat shaking
+    p.y += sin(uTime * 30.0) * 0.02 * uBeat;
+    p.x += cos(uTime * 25.0) * 0.02 * uBeat;
+
+    // Floor & Ceiling Grid
+    float floorGrid = drawGrid(p, -0.4 + uBass * 0.05, 0.0);
+    float ceilGrid = drawGrid(-p, -0.4 + uBass * 0.05, sin(uTime) * 0.2); 
     
-    // Scanlines driven by treble
-    float scanline = sin(vUv.y * 200.0 - uTime * (10.0 + uTreble * 50.0)) * 0.1 + 0.9;
+    // Background pulsing flash
+    vec3 pulseColor = mix(uColor, vec3(1.0, 0.1, 0.5), uBeat);
+    vec3 stageColor = pulseColor * (0.05 + floorGrid * (1.0 + uBass*2.0) + ceilGrid * (1.0 + uBass*2.0));
     
-    vec3 finalColor = uColor * luma * scanline * (1.0 + uBass * 0.5 + uBeat * 2.0);
-    gl_FragColor = vec4(finalColor, min(1.0, luma * 2.0));
+    // V-shaped light beams hitting the center stage
+    float beamMask = max(0.0, 1.0 - abs(p.x * 2.0 - p.y) * 2.0) + max(0.0, 1.0 - abs(p.x * -2.0 - p.y) * 2.0);
+    stageColor += pulseColor * beamMask * 0.1 * (1.0 + uBass * 4.0) * exp(-abs(p.y)*2.0);
+
+    // Laser strobe
+    float laserId = floor(p.x * 8.0 + uTime * 6.0);
+    float laser = step(0.9, hash(vec2(laserId, floor(uTime*12.0)))) * step(0.0, p.y + 0.3);
+    stageColor += laser * pulseColor * (0.8 + uBass * 3.0) * exp(-abs(p.y) * 2.0);
+
+    // Vignette
+    float vignette = length(p);
+    stageColor *= smoothstep(2.5, 0.3, vignette);
+    
+    // Screen scanlines
+    float scanline = sin(vUv.y * 800.0) * 0.04 + 0.96;
+    stageColor *= scanline;
+    
+    // Aggressive noise based on bass
+    float noise = hash(p * 123.0 + uTime) - 0.5;
+    stageColor += noise * 0.2 * (1.0 + uBass * 3.0);
+
+    gl_FragColor = vec4(stageColor, 1.0);
   }
 `;
 
-function HologramScene() {
-  const camTex = useWebcamTexture();
+function PulseScene() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const { baseColor } = useStore();
 
@@ -316,13 +542,12 @@ function HologramScene() {
 
   return (
     <mesh position={[0,0,-3]}>
-      <planeGeometry args={[16*0.6, 9*0.6]} />
+      <planeGeometry args={[22, 12]} />
       <shaderMaterial 
         ref={matRef}
         vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
-        fragmentShader={hologramFragment}
+        fragmentShader={pulseFragment}
         uniforms={{
-          tCamera: { value: camTex },
           uTime: { value: 0 },
           uBass: { value: 0 },
           uBeat: { value: 0 },
@@ -331,7 +556,6 @@ function HologramScene() {
         }}
         transparent
         depthWrite={false}
-        blending={THREE.AdditiveBlending}
       />
     </mesh>
   );
@@ -442,7 +666,7 @@ function DumbarScene() {
         {new Array(TRAIL_COUNT).fill(0).map((_, i) => (
            <Text
              key={i}
-             font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfMZhrib2Bg-4.ttf"
+             font="https://fonts.gstatic.com/ea/notosanssc/v1/NotoSansSC-Bold.otf"
              fontSize={5}
              letterSpacing={-0.1}
              anchorX="center"
@@ -462,17 +686,58 @@ function SceneRouter() {
   switch(currentScene) {
     case 'Cyber': return <CyberScene />;
     case 'Liquid': return <LiquidScene />;
-    case 'Pulse': return <HologramScene />;
+    case 'Pulse': return <PulseScene />;
     case 'Void': return <VoidScene />;
     case 'Dumbar': return <DumbarScene />;
     default: return <VoidScene />;
   }
 }
 
+function useCleanTextTexture(text: string, isDumbar: boolean = false) {
+  const canvas = useMemo(() => document.createElement('canvas'), []);
+  const texture = useMemo(() => new THREE.CanvasTexture(canvas), [canvas]);
+
+  useEffect(() => {
+    // High res for crisp text
+    canvas.width = 2048;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 2048, 1024);
+
+    if (isDumbar) {
+      // Dumbar style: transparent background, crisp black or white text depending on inversion later
+      // But let's just draw stark white text on transparent, we can tint via meshBasicMaterial
+      ctx.fillStyle = 'rgba(255,255,255,1.0)';
+      ctx.font = '900 480px Inter, system-ui, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // Slight letter spacing simulation by inserting thin spaces? No, native letter-spacing is hard.
+      // We'll just rely on standard kerning.
+      ctx.fillText(text, 1024, 512);
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,1.0)';
+      ctx.font = '900 360px Inter, system-ui, "SF Pro Text", "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Draw text
+      ctx.fillText(text, 1024, 512);
+    }
+
+    texture.needsUpdate = true;
+  }, [text, canvas, texture, isDumbar]);
+
+  return texture;
+}
+
 // === CINEMATIC TYPOGRAPHY ===
 function VisualText() {
   const textRef = useRef<THREE.Mesh>(null);
   const { currentScene, textInput, textAnimStyle, textGlow, textSpeed, textReactive, baseColor } = useStore();
+
+  const displayText = (textInput || " ").toUpperCase();
+  const tex = useCleanTextTexture(displayText, false);
 
   useFrame((state) => {
     if(!textRef.current) return;
@@ -483,13 +748,19 @@ function VisualText() {
     if(textAnimStyle === 'Cinematic') {
       textRef.current.scale.setScalar(1 + react * 0.2);
       textRef.current.position.y = Math.sin(t) * 0.2;
+      textRef.current.rotation.set(0,0,0);
     } else if (textAnimStyle === 'Glitch') {
       textRef.current.scale.setScalar(1 + react);
+      textRef.current.rotation.set(0,0,0);
       if(Math.random() > 0.8 || beat > 0.5) {
         textRef.current.position.x = (Math.random()-0.5)*0.5 * react;
       } else {
         textRef.current.position.x = 0;
       }
+    } else if (textAnimStyle === 'Beat') {
+      textRef.current.scale.setScalar(1.5 + (react * 1.5) + (beat * 1.0));
+      textRef.current.position.set(0, 0, 1 + bass * 2.0);
+      textRef.current.rotation.z = Math.sin(t * 10.0) * 0.05 * beat;
     } else if (textAnimStyle === 'Floating') {
       textRef.current.rotation.z = Math.sin(t * 0.5) * 0.1;
       textRef.current.position.y = Math.sin(t) * 0.5;
@@ -497,7 +768,10 @@ function VisualText() {
     } else if (textAnimStyle === 'Massive') {
       textRef.current.scale.setScalar(4 + react * 2.5);
       textRef.current.position.z = -2 + (beat * 2.0);
-    } 
+      textRef.current.rotation.set(0,0,0);
+    } else {
+      textRef.current.scale.setScalar(1 + react * 0.5);
+    }
     
     // Adjust material properties dynamically if needed
     const mat = textRef.current.material as THREE.MeshBasicMaterial;
@@ -507,22 +781,19 @@ function VisualText() {
     }
   });
 
-  if(!textInput || currentScene === 'Dumbar') return null;
+  if(!textInput || textInput === " " || currentScene === 'Dumbar') return null;
 
   return (
-    <Text
-      ref={textRef}
-      position={[0, 0, 1]}
-      fontSize={1}
-      font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfMZhrib2Bg-4.ttf"
-      anchorX="center"
-      anchorY="middle"
-      textAlign="center"
-      maxWidth={15}
-    >
-      {textInput.toUpperCase()}
-      <meshBasicMaterial transparent opacity={0.9} />
-    </Text>
+    <mesh ref={textRef} position={[0, 0, 1]}>
+      <planeGeometry args={[20, 10]} />
+      <meshBasicMaterial 
+        map={tex} 
+        transparent 
+        opacity={0.9} 
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
   );
 }
 
