@@ -219,9 +219,9 @@ export default function App() {
                    <div className="h-px w-full bg-white/5" />
                    <ColorPanel />
                    <div className="h-px w-full bg-white/5" />
-                   <AudioUrlPanel />
-                   <div className="h-px w-full bg-white/5" />
                    <FxPanel />
+                   <div className="h-px w-full bg-white/5" />
+                   <AudioUrlPanel />
                    <div className="h-px w-full bg-white/5" />
                    <ControlPanel />
                 </div>
