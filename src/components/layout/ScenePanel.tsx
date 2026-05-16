@@ -6,6 +6,7 @@ const scenesConfig = [
   { id: 'Liquid', name: 'Fluid Matrix' },
   { id: 'Cyber', name: 'Hologram Grid' },
   { id: 'Pulse', name: 'Sonic Pulse' },
+  { id: 'Dumbar', name: 'Dumbar Type' },
 ];
 
 export function ScenePanel() {

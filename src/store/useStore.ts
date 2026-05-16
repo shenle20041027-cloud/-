@@ -1,8 +1,14 @@
 import { create } from 'zustand';
 
+export type AudioSourceMode = 'microphone' | 'url' | 'simulation';
+
 interface VisualizerState {
   audioReady: boolean;
   setAudioReady: (ready: boolean) => void;
+  audioSourceMode: AudioSourceMode;
+  setAudioSourceMode: (mode: AudioSourceMode) => void;
+  audioUrl: string;
+  setAudioUrl: (url: string) => void;
   
   // Language
   language: 'EN' | 'ZH';
@@ -71,6 +77,10 @@ interface VisualizerState {
 export const useStore = create<VisualizerState>((set) => ({
   audioReady: false,
   setAudioReady: (ready) => set({ audioReady: ready }),
+  audioSourceMode: 'microphone',
+  setAudioSourceMode: (mode) => set({ audioSourceMode: mode }),
+  audioUrl: '',
+  setAudioUrl: (url) => set({ audioUrl: url }),
 
   // Language
   language: 'EN',
@@ -102,7 +112,7 @@ export const useStore = create<VisualizerState>((set) => ({
 
   // Text Engine Defaults
   textInput: 'NEONPULSE',
-  textAnimStyle: 'Cinematic Title',
+  textAnimStyle: 'Cinematic',
   textGlow: 1.0,
   textSpeed: 1.0,
   textReactive: 1.0,
