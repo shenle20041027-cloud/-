@@ -30,28 +30,28 @@ export function AudioPanel() {
       <div className="flex items-center justify-between text-white/80">
         <div className="flex items-center gap-3">
           <Activity size={16} className="text-green-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest">Advanced Audio Console</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest">{i18n.ADVANCED_AUDIO_CONSOLE || 'Advanced Audio Console'}</span>
         </div>
         <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
       </div>
       
       <div className="pt-2">
         <div className="mb-6 border-b border-white/5 pb-4">
-          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">Input & Dynamics</h3>
+          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">{i18n.INPUT_DYNAMICS || 'Input & Dynamics'}</h3>
           <Slider 
-            label="Master Gain" 
+            label={i18n.MASTER_GAIN || 'Master Gain'} 
             value={inputGain} 
             onChange={(v: number) => setAudioControl('inputGain', v)} 
             max={5} 
           />
           <Slider 
-            label="Noise Gate" 
+            label={i18n.NOISE_GATE || 'Noise Gate'} 
             value={noiseGate} 
             onChange={(v: number) => setAudioParam('noiseGate', v)} 
             max={1} 
           />
           <Slider 
-            label="Beat Detection Multiplier" 
+            label={i18n.BEAT_MULTIPLIER || 'Beat Detection Multiplier'} 
             value={beatMultiplier} 
             onChange={(v: number) => setAudioParam('beatMultiplier', v)} 
             max={3} 
@@ -59,27 +59,27 @@ export function AudioPanel() {
         </div>
 
         <div className="border-b border-white/5 pb-4 mb-4">
-          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">Frequency Sensitivities</h3>
+          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">{i18n.FREQUENCY_SENSITIVITIES || 'Frequency Sensitivities'}</h3>
           <Slider 
-            label="Sub Bass (20-60Hz)" 
+            label={i18n.SUB_BASS || 'Sub Bass (20-60Hz)'} 
             value={subBassSense} 
             onChange={(v: number) => setAudioParam('subBassSense', v)} 
             max={3} 
           />
           <Slider 
-            label="Bass (60-250Hz)" 
+            label={i18n.BASS_RANGE || 'Bass (60-250Hz)'} 
             value={bassSense} 
             onChange={(v: number) => setAudioParam('bassSense', v)} 
             max={3} 
           />
           <Slider 
-            label="Mid (250-2000Hz)" 
+            label={i18n.MID_RANGE || 'Mid (250-2000Hz)'} 
             value={midSense} 
             onChange={(v: number) => setAudioParam('midSense', v)} 
             max={3} 
           />
           <Slider 
-            label="Treble (6000Hz+)" 
+            label={i18n.TREBLE_RANGE || 'Treble (6000Hz+)'} 
             value={trebleSense} 
             onChange={(v: number) => setAudioParam('trebleSense', v)} 
             max={3} 
@@ -87,15 +87,15 @@ export function AudioPanel() {
         </div>
 
         <div>
-          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">Legacy Routing</h3>
+          <h3 className="text-[9px] uppercase tracking-widest text-white/30 mb-4 font-bold">{i18n.LEGACY_ROUTING || 'Legacy Routing'}</h3>
           <Slider 
-            label="Bass Routing" 
+            label={i18n.BASS_ROUTING || 'Bass Routing'} 
             value={bassReact} 
             onChange={(v: number) => setAudioControl('bassReact', v)} 
             max={3} 
           />
           <Slider 
-            label="Mid Routing" 
+            label={i18n.MID_ROUTING || 'Mid Routing'} 
             value={midReact} 
             onChange={(v: number) => setAudioControl('midReact', v)} 
             max={3} 

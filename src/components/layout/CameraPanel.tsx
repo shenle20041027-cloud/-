@@ -1,5 +1,6 @@
 import { useStore } from '@/store/useStore';
 import { Aperture, Activity, Eye, Focus } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const Toggle = ({ label, active, onToggle }: any) => (
   <div className="flex justify-between items-center mb-4">
@@ -32,25 +33,26 @@ const Slider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) 
 );
 
 export function CameraPanel() {
-  const { currentScene } = useStore();
+  const { currentScene, language } = useStore();
+  const i18n = t[language];
 
   return (
     <div className="w-full p-6 flex flex-col gap-6">
       <div className="flex items-center justify-between text-white/80">
         <div className="flex items-center gap-3">
           <Aperture size={16} className="text-blue-400" />
-          <span className="text-[10px] font-bold uppercase tracking-widest">AI Vision System</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest">{i18n.AI_VISION_SYSTEM || 'AI Vision System'}</span>
         </div>
         <div className="flex items-center gap-2">
            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-           <span className="text-[8px] uppercase tracking-widest text-white/40">Rec</span>
+           <span className="text-[8px] uppercase tracking-widest text-white/40">{i18n.REC_INDICATOR || 'Rec'}</span>
         </div>
       </div>
       
       {currentScene !== 'Pulse' ? (
         <div className="w-full h-32 bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-3">
            <Eye size={24} className="text-white/20" />
-           <span className="text-[10px] uppercase font-bold tracking-widest text-white/40 text-center px-4">Switch to 'Neon Pulse' Preset<br/>to activate vision rendering</span>
+           <span className="text-[10px] uppercase font-bold tracking-widest text-white/40 text-center px-4">{i18n.SWITCH_NEON_PRESET || "Switch to 'Neon Pulse' Preset to activate vision rendering"}</span>
         </div>
       ) : (
         <div className="w-full aspect-video bg-black/50 border border-white/10 rounded-xl flex items-center justify-center relative overflow-hidden group">
@@ -62,11 +64,11 @@ export function CameraPanel() {
       )}
 
       <div className="pt-2">
-         <Toggle label="Human Detection" active={true} onToggle={() => {}} />
-         <Toggle label="Particle Extraction" active={true} onToggle={() => {}} />
-         <Toggle label="Audience Reaction" active={true} onToggle={() => {}} />
-         <Slider label="Motion Tracking" value={0.85} onChange={() => {}} />
-         <Slider label="Extraction Edge" value={0.4} onChange={() => {}} />
+         <Toggle label={i18n.HUMAN_DETECTION || 'Human Detection'} active={true} onToggle={() => {}} />
+         <Toggle label={i18n.PARTICLE_EXTRACTION || 'Particle Extraction'} active={true} onToggle={() => {}} />
+         <Toggle label={i18n.AUDIENCE_REACTION || 'Audience Reaction'} active={true} onToggle={() => {}} />
+         <Slider label={i18n.MOTION_TRACKING || 'Motion Tracking'} value={0.85} onChange={() => {}} />
+         <Slider label={i18n.EXTRACTION_EDGE || 'Extraction Edge'} value={0.4} onChange={() => {}} />
       </div>
     </div>
   );

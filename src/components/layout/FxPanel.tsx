@@ -1,5 +1,6 @@
 import { useStore } from '@/store/useStore';
 import { Zap } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const Slider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) => (
   <div className="flex flex-col gap-2 mb-4">
@@ -32,37 +33,38 @@ const Toggle = ({ label, active, onToggle }: any) => (
 );
 
 export function FxPanel() {
-  const { bloomIntensity, distortion, rgbSplitAmount, glitchActive, setFxControl } = useStore();
+  const { bloomIntensity, distortion, rgbSplitAmount, glitchActive, setFxControl, language } = useStore();
+  const i18n = t[language];
 
   return (
     <div className="w-full p-6 flex flex-col gap-6">
       <div className="flex items-center gap-3 text-white/80">
         <Zap size={16} className="text-yellow-400" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">Post Processing</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest">{i18n.FX_STACK || 'Post Processing'}</span>
       </div>
       
       <div className="pt-2">
         <Slider 
-          label="Bloom Intensity"
+          label={i18n.BLOOM_INTENSITY || 'Bloom Intensity'}
           value={bloomIntensity} 
           onChange={(v: number) => setFxControl('bloomIntensity', v)} 
           max={5} 
         />
         <Slider 
-          label="RGB Split"
+          label={i18n.RGB_SPLIT || 'RGB Split'}
           value={rgbSplitAmount} 
           onChange={(v: number) => setFxControl('rgbSplitAmount', v)} 
           max={0.05} 
           step={0.001}
         />
         <Slider 
-          label="Lens Distortion"
+          label={i18n.LENS_DISTORTION || 'Lens Distortion'}
           value={distortion} 
           onChange={(v: number) => setFxControl('distortion', v)} 
           max={2} 
         />
         <Toggle 
-          label="Digital Glitch"
+          label={i18n.DIGITAL_GLITCH || 'Digital Glitch'}
           active={glitchActive}
           onToggle={() => setFxControl('glitchActive', !glitchActive)}
         />

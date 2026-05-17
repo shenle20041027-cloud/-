@@ -67,7 +67,7 @@ export default function App() {
             {i18n.APP_TITLE || 'Visual Interface'}
           </h1>
           <p className="text-white/50 mb-12 text-lg font-medium">
-            Professional spatial visual engine powered by real-time audio and AI.
+            {i18n.PROFESSIONAL_VJ || 'Professional spatial visual engine powered by real-time audio and AI.'}
           </p>
           
           <button 
@@ -76,7 +76,7 @@ export default function App() {
           >
             <div className="relative flex items-center gap-3">
               <Play fill="currentColor" size={18} />
-              <span>Initialize Engine</span>
+              <span>{i18n.INIT_AUDIO || 'Initialize Engine'}</span>
             </div>
           </button>
           
@@ -110,12 +110,12 @@ export default function App() {
              <div className="w-6 h-6 bg-white text-black rounded-sm flex items-center justify-center">
                 <Sparkles size={14} />
              </div>
-             <h1 className="text-xs font-bold tracking-widest uppercase">Nexus.VJ Workstation</h1>
+             <h1 className="text-xs font-bold tracking-widest uppercase">{i18n.APP_HEADER || 'Nexus.VJ Workstation'}</h1>
           </div>
           <div className="flex items-center gap-6">
              <div className="flex items-center gap-2 text-[10px] font-bold text-white/50 uppercase tracking-widest">
                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-               Live Engine Status: Optimal
+               {i18n.LIVE_ENGINE_STATUS || 'Live Engine Status: Optimal'}
              </div>
              <button 
                 onClick={() => setLanguage(language === 'EN' ? 'ZH' : 'EN')}
@@ -189,7 +189,7 @@ export default function App() {
                {!isFullscreen && (
                  <div className="h-[120px] shrink-0 bg-[#050505] relative overflow-hidden border-t border-white/10 flex flex-col">
                     <div className="flex items-center px-4 h-8 bg-white/5 border-b border-white/5 shrink-0">
-                       <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Performance Timeline</span>
+                       <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">{i18n.SCENE_TIMELINE || 'Performance Timeline'}</span>
                     </div>
                     <div className="flex-1 p-4 flex flex-col justify-center gap-2 overflow-hidden opacity-50 pointer-events-none">
                        {/* Decorative timeline tracks */}

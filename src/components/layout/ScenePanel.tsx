@@ -1,21 +1,23 @@
 import { useStore } from '@/store/useStore';
 import { LayoutGrid } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const scenesConfig = [
-  { id: 'Void', name: 'Dark Space' },
-  { id: 'Liquid', name: 'Fluid Matrix' },
-  { id: 'Cyber', name: 'Hologram Grid' },
-  { id: 'Pulse', name: 'Sonic Pulse' },
+  { id: 'Void' },
+  { id: 'Liquid' },
+  { id: 'Cyber' },
+  { id: 'Pulse' },
 ];
 
 export function ScenePanel() {
-  const { currentScene, setCurrentScene } = useStore();
+  const { currentScene, setCurrentScene, language } = useStore();
+  const strings = t[language];
 
   return (
     <div className="w-full p-6 flex flex-col gap-6">
       <div className="flex items-center gap-3 text-white/80">
         <LayoutGrid size={16} className="text-blue-400" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">Active Architecture</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest">{strings.ACTIVE_ARCHITECTURE || 'Active Architecture'}</span>
       </div>
       
       <div className="grid grid-cols-2 gap-3">
@@ -29,7 +31,7 @@ export function ScenePanel() {
                 : "bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white"
             }`}
           >
-            {scene.name}
+            {strings.SCENES?.[scene.id] || scene.id}
           </button>
         ))}
       </div>

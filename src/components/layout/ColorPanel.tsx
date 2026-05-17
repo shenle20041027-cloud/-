@@ -1,5 +1,6 @@
 import { useStore } from '@/store/useStore';
 import { Palette, Pipette } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const Slider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) => (
   <div className="flex flex-col gap-2 mb-4">
@@ -40,8 +41,9 @@ export function ColorPanel() {
   const { 
     baseColor, secondaryColor, accentColor, bgColor,
     saturation, contrast, brightness, gamma, exposure,
-    setColorGrading 
+    setColorGrading, language 
   } = useStore();
+  const i18n = t[language];
 
   const colors = [
     { name: 'Cyber Blue', value: '#00f3ff' },
@@ -55,23 +57,23 @@ export function ColorPanel() {
     <div className="w-full p-6 flex flex-col gap-6">
       <div className="flex items-center gap-3 text-white/80">
         <Palette size={16} className="text-pink-400" />
-        <span className="text-[10px] font-bold uppercase tracking-widest">Color & Mood</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest">{i18n.COLOR_MOOD || 'Color & Mood'}</span>
       </div>
       
       <div className="flex flex-col gap-1">
-        <ColorPickerInput label="Primary" value={baseColor} onChange={(v: string) => setColorGrading('baseColor', v)} />
-        <ColorPickerInput label="Secondary" value={secondaryColor} onChange={(v: string) => setColorGrading('secondaryColor', v)} />
-        <ColorPickerInput label="Accent" value={accentColor} onChange={(v: string) => setColorGrading('accentColor', v)} />
-        <ColorPickerInput label="Background" value={bgColor} onChange={(v: string) => setColorGrading('bgColor', v)} />
+        <ColorPickerInput label={i18n.COLOR_PRIMARY || 'Primary'} value={baseColor} onChange={(v: string) => setColorGrading('baseColor', v)} />
+        <ColorPickerInput label={i18n.COLOR_SECONDARY || 'Secondary'} value={secondaryColor} onChange={(v: string) => setColorGrading('secondaryColor', v)} />
+        <ColorPickerInput label={i18n.COLOR_ACCENT || 'Accent'} value={accentColor} onChange={(v: string) => setColorGrading('accentColor', v)} />
+        <ColorPickerInput label={i18n.COLOR_BACKGROUND || 'Background'} value={bgColor} onChange={(v: string) => setColorGrading('bgColor', v)} />
       </div>
 
       <div className="h-px w-full bg-white/5 my-2" />
 
       <div className="pt-2">
-        <Slider label="Saturation" value={saturation} onChange={(v: number) => setColorGrading('saturation', v)} max={3} />
-        <Slider label="Contrast" value={contrast} onChange={(v: number) => setColorGrading('contrast', v)} max={3} />
-        <Slider label="Brightness" value={brightness} onChange={(v: number) => setColorGrading('brightness', v)} max={3} />
-        <Slider label="Exposure" value={exposure} onChange={(v: number) => setColorGrading('exposure', v)} max={3} />
+        <Slider label={i18n.SATURATION || 'Saturation'} value={saturation} onChange={(v: number) => setColorGrading('saturation', v)} max={3} />
+        <Slider label={i18n.CONTRAST || 'Contrast'} value={contrast} onChange={(v: number) => setColorGrading('contrast', v)} max={3} />
+        <Slider label={i18n.BRIGHTNESS || 'Brightness'} value={brightness} onChange={(v: number) => setColorGrading('brightness', v)} max={3} />
+        <Slider label={i18n.EXPOSURE || 'Exposure'} value={exposure} onChange={(v: number) => setColorGrading('exposure', v)} max={3} />
       </div>
     </div>
   );
