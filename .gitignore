@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+.chrome-cdp/
+.npm-cache/

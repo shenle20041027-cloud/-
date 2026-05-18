@@ -10,6 +10,7 @@ import { ColorPanel } from '@/components/layout/ColorPanel';
 import { ControlPanel } from '@/components/layout/ControlPanel';
 import { CameraPanel } from '@/components/layout/CameraPanel'; // We will create this
 import { Visualizer } from '@/components/visualizer/Visualizer';
+import { MusicProjectBar } from '@/components/music/MusicProjectBar';
 import { Play, Settings2, Sparkles, Monitor, Focus, Volume2, Type, Aperture, PaintBucket, LayoutGrid, Sliders } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
@@ -31,6 +32,7 @@ export default function App() {
         noiseGate: state.noiseGate,
         beatMultiplier: state.beatMultiplier
       });
+
       animationFrameId = requestAnimationFrame(renderLoop);
     };
 
@@ -174,6 +176,7 @@ export default function App() {
 
             {/* CENTER CANVAS & TIMELINE */}
             <div className="flex-1 bg-black relative group flex flex-col min-w-0">
+               {!isFullscreen && <MusicProjectBar />}
                <div className="flex-1 relative min-h-0">
                  <Visualizer />
                  
@@ -230,4 +233,3 @@ export default function App() {
     </div>
   );
 }
-

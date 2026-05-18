@@ -4,8 +4,28 @@ import { EffectComposer, Bloom, Glitch, ChromaticAberration, Vignette } from '@r
 import { Text } from '@react-three/drei';
 import { GlitchMode, BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
-import { audioEngine } from '@/lib/AudioEngine';
+import { getAudioDriveSnapshot } from '@/lib/audioDrive';
 import { useStore } from '@/store/useStore';
+
+function getReactiveAudio() {
+  const { audioDriveMode, autoVjEnabled } = useStore.getState();
+  const audio = getAudioDriveSnapshot(audioDriveMode);
+  const motionAmount = autoVjEnabled ? 0.9 : 0;
+  const beatAmount = autoVjEnabled ? 0.75 : 0;
+
+  return {
+    ...audio,
+    volume: audio.volume * motionAmount,
+    subBass: audio.subBass * motionAmount,
+    bass: audio.bass * motionAmount,
+    lowMid: audio.lowMid * motionAmount,
+    mid: audio.mid * motionAmount,
+    highMid: audio.highMid * motionAmount,
+    treble: audio.treble * motionAmount,
+    energy: audio.energy * motionAmount,
+    beat: audio.beat * beatAmount,
+  };
+}
 
 // === WEBCAM HOOK ===
 function useWebcamTexture() {
@@ -289,7 +309,7 @@ function VoidScene() {
 
   useFrame((state, delta) => {
     if(!materialRef.current || !pointsRef.current) return;
-    const { subBass, bass, mid, energy, beat } = audioEngine.current;
+    const { subBass, bass, mid, energy, beat } = getReactiveAudio();
     
     // Beat causes sudden rotation surge
     pointsRef.current.rotation.y += delta * 0.1 * speed * (1 + beat * 5.0 + subBass);
@@ -416,7 +436,7 @@ function LiquidScene() {
   
   useFrame((state) => {
     if(!materialRef.current) return;
-    const { bass, lowMid, energy } = audioEngine.current;
+    const { bass, lowMid, energy } = getReactiveAudio();
     materialRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
     materialRef.current.uniforms.uBass.value = bass;
     materialRef.current.uniforms.uLowMid.value = lowMid;
@@ -452,7 +472,7 @@ function CyberScene() {
   
   useFrame((state) => {
     if(!matRef.current) return;
-    const { bass, energy } = audioEngine.current;
+    const { bass, energy } = getReactiveAudio();
     matRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
     matRef.current.uniforms.uBass.value = bass;
     matRef.current.uniforms.uEnergy.value = energy;
@@ -473,6 +493,173 @@ function CyberScene() {
           uEnergy: { value: 0 },
           uColor: { value: new THREE.Color() },
           tText: { value: null }
+        }}
+        transparent={false}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+// Dynamic Type / Sonic Topology scene adapted for the VJ stage.
+const topologyFragment = `
+  uniform float uTime;
+  uniform sampler2D uTexture;
+  uniform float uThickness;
+  uniform float uAmplitude;
+  uniform float uSpeed;
+  uniform float uAudio;
+  uniform float uLiquify;
+  uniform vec3 uColor1;
+  uniform vec3 uColor2;
+  uniform float uFrequency;
+  uniform float uAspect;
+  varying vec2 vUv;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y) * 2.0 - 1.0;
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    vec2 center = (uv - 0.5) * vec2(uAspect, 1.0);
+    float currentSpeed = uSpeed + uAudio * 2.0;
+    float currentAmp = uAmplitude + uAudio * 0.2;
+
+    float liquifyScale = 1.2 + uLiquify * 5.5;
+    float t = uTime * currentSpeed;
+    float noiseX = noise(uv * liquifyScale + vec2(t * 0.22, -t * 0.17));
+    float noiseY = noise(uv * liquifyScale + vec2(19.7 - t * 0.15, 11.3 + t * 0.2));
+    vec2 distortedUV = uv + vec2(noiseX, noiseY) * currentAmp;
+
+    float d = texture2D(uTexture, distortedUV).r;
+    float bgNoise = max(0.0, noise(uv * 2.1 + uTime * 0.08));
+    vec3 bg = uColor2 * bgNoise * (0.025 + uAudio * 0.18);
+
+    if (d < 0.005) {
+      float dust = step(0.988, hash(floor(uv * vec2(180.0, 95.0)) + floor(uTime * 6.0)));
+      gl_FragColor = vec4(bg + dust * uColor1 * 0.08 * uAudio, 1.0);
+      return;
+    }
+
+    float rings = fract(d * uFrequency - t * 1.8);
+    float width = uThickness * 0.5;
+    float lineAlpha = smoothstep(0.5 - width - 0.055, 0.5 - width, rings)
+                    - smoothstep(0.5 + width, 0.5 + width + 0.055, rings);
+    float mask = smoothstep(0.01, 0.16, d);
+    float edge = smoothstep(0.02, 0.25, d) * (1.0 - smoothstep(0.72, 1.0, d));
+    lineAlpha *= mask;
+
+    vec3 contour = mix(uColor1, uColor2, clamp(uAudio * 1.4 + (1.0 - d), 0.0, 1.0));
+    vec3 glow = uColor2 * mask * d * clamp(0.25 + uAudio, 0.25, 1.0) * 0.55;
+    vec3 whiteCore = vec3(1.0) * smoothstep(0.82, 1.0, d) * (0.12 + uAudio * 0.2);
+    vec3 finalColor = bg + contour * lineAlpha + glow + whiteCore;
+
+    finalColor += uColor1 * edge * 0.08 * (0.5 + uAudio);
+    finalColor *= smoothstep(1.45, 0.25, length(center));
+    finalColor *= 0.96 + sin(vUv.y * 900.0) * 0.04;
+
+    gl_FragColor = vec4(finalColor, 1.0);
+  }
+`;
+
+function useTopologyTexture(text: string, blurIntensity: number) {
+  const canvas = useMemo(() => document.createElement('canvas'), []);
+  const texture = useMemo(() => {
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = false;
+    return tex;
+  }, [canvas]);
+
+  useEffect(() => {
+    canvas.width = 2048;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const displayText = (text || 'YOU').toUpperCase();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.filter = `blur(${Math.max(1, blurIntensity * 80)}px)`;
+
+    let fontSize = 520;
+    do {
+      ctx.font = `900 ${fontSize}px Inter, Arial Black, system-ui, sans-serif`;
+      fontSize -= 16;
+    } while (ctx.measureText(displayText).width > canvas.width * 1.22 && fontSize > 160);
+
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(1.28, 1.0);
+    ctx.transform(1, 0, -0.2, 1, 0, 0);
+    ctx.fillText(displayText, 0, 0);
+
+    texture.needsUpdate = true;
+  }, [text, blurIntensity, canvas, texture]);
+
+  return texture;
+}
+
+function TopologyScene() {
+  const { speed, chaos, distortion, textInput, baseColor, secondaryColor, bloomIntensity } = useStore();
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const texture = useTopologyTexture(textInput || 'YOU', 0.35 + distortion * 0.25);
+  const { size } = useThree();
+
+  useFrame((state, delta) => {
+    if (!materialRef.current) return;
+    const { energy, beat, bass, treble } = getReactiveAudio();
+    const audio = Math.min(1.35, energy * 0.85 + beat * 0.65 + bass * 0.35 + treble * 0.2);
+    const uniforms = materialRef.current.uniforms;
+    uniforms.uTime.value += delta;
+    uniforms.uTexture.value = texture;
+    uniforms.uAudio.value += (audio - uniforms.uAudio.value) * 0.12;
+    uniforms.uThickness.value = 0.1 + Math.min(0.28, bloomIntensity * 0.025 + beat * 0.08);
+    uniforms.uAmplitude.value = 0.08 + distortion * 0.28 + chaos * 0.16;
+    uniforms.uSpeed.value = 0.65 + speed * 0.75;
+    uniforms.uLiquify.value = 0.42 + chaos * 0.55 + bass * 0.2;
+    uniforms.uFrequency.value = 18 + chaos * 18 + treble * 8;
+    uniforms.uAspect.value = size.width / Math.max(size.height, 1);
+    uniforms.uColor1.value.set(baseColor);
+    uniforms.uColor2.value.set(secondaryColor);
+  });
+
+  return (
+    <mesh position={[0, 0, -1]}>
+      <planeGeometry args={[24, 12]} />
+      <shaderMaterial
+        ref={materialRef}
+        vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+        fragmentShader={topologyFragment}
+        uniforms={{
+          uTime: { value: 0 },
+          uTexture: { value: texture },
+          uThickness: { value: 0.15 },
+          uAmplitude: { value: 0.12 },
+          uSpeed: { value: 1 },
+          uAudio: { value: 0 },
+          uLiquify: { value: 0.5 },
+          uColor1: { value: new THREE.Color(baseColor) },
+          uColor2: { value: new THREE.Color(secondaryColor) },
+          uFrequency: { value: 20 },
+          uAspect: { value: size.width / Math.max(size.height, 1) },
         }}
         transparent={false}
         depthWrite={false}
@@ -554,7 +741,7 @@ function PulseScene() {
 
   useFrame((state) => {
     if(!matRef.current) return;
-    const { bass, treble, beat } = audioEngine.current;
+    const { bass, treble, beat } = getReactiveAudio();
     matRef.current.uniforms.uTime.value = state.clock.elapsedTime;
     matRef.current.uniforms.uBass.value = bass;
     matRef.current.uniforms.uBeat.value = beat;
@@ -601,7 +788,7 @@ function DumbarScene() {
 
   useFrame((state) => {
     if(!groupRef.current) return;
-    const { bass, treble, beat, energy, subBass, highMid } = audioEngine.current;
+    const { bass, treble, beat, energy, subBass, highMid } = getReactiveAudio();
     
     // Dynamic theme colors inspired by Google Sans Flex / Studio Dumbar
     if (energy > 0.7 && beat > 0.4) {
@@ -707,6 +894,7 @@ function SceneRouter() {
   const { currentScene } = useStore();
   switch(currentScene) {
     case 'Cyber': return <CyberScene />;
+    case 'Topology': return <TopologyScene />;
     case 'Liquid': return <LiquidScene />;
     case 'Pulse': return <PulseScene />;
     case 'Void': return <VoidScene />;
@@ -779,7 +967,7 @@ function VisualText() {
 
   useFrame((state) => {
     if(!textRef.current) return;
-    const { bass, treble, beat } = audioEngine.current;
+    const { bass, treble, beat } = getReactiveAudio();
     const t = state.clock.elapsedTime * textSpeed;
     const react = bass * textReactive + (beat * 0.5 * textReactive);
 
@@ -819,7 +1007,7 @@ function VisualText() {
     }
   });
 
-  if(!textInput || textInput === " " || currentScene === 'Dumbar') return null;
+  if(!textInput || textInput === " " || currentScene === 'Dumbar' || currentScene === 'Topology') return null;
 
   return (
     <mesh ref={textRef} position={[0, 0, 1]}>
@@ -837,20 +1025,26 @@ function VisualText() {
 
 // === HIGH-END POST PROCESSING ===
 function PostProcessing() {
-  const { bloomIntensity, rgbSplitAmount, glitchActive } = useStore();
+  const { audioDriveMode, audioFxReactive, autoVjEnabled, bloomIntensity, rgbSplitAmount, distortion, glitchActive } = useStore();
   const [dynamicBloom, setDynamicBloom] = useState(bloomIntensity);
   const [dynamicSplit, setDynamicSplit] = useState(rgbSplitAmount);
+  const [dynamicDistortion, setDynamicDistortion] = useState(distortion);
+  const [dynamicGlitch, setDynamicGlitch] = useState(false);
 
   useFrame(() => {
-    const { energy, beat, bass } = audioEngine.current;
+    const { energy, beat, bass, subBass, mid, treble } = getAudioDriveSnapshot(audioDriveMode);
+    const morph = autoVjEnabled && audioFxReactive ? 1 : 0;
     
-    // Dynamic bloom
-    const targetBloom = bloomIntensity + (energy * 0.5) + (beat * 2.0);
+    const targetBloom = bloomIntensity + (energy * 1.05 + beat * 2.4 + treble * 0.5) * morph;
     setDynamicBloom(prev => prev + (targetBloom - prev) * 0.1); 
 
-    // Dynamic Chromatic Aberration
-    const targetSplit = rgbSplitAmount + (bass * 0.015) + (beat * 0.03);
+    const targetSplit = rgbSplitAmount + (bass * 0.016 + subBass * 0.014 + beat * 0.028 + distortion * 0.006) * morph;
     setDynamicSplit(prev => prev + (targetSplit - prev) * 0.2);
+
+    const targetDistortion = distortion + (subBass * 0.52 + bass * 0.28 + mid * 0.16 + beat * 0.38) * morph;
+    setDynamicDistortion(prev => prev + (targetDistortion - prev) * 0.16);
+
+    setDynamicGlitch(glitchActive || (morph > 0 && (beat > 0.65 || treble > 0.58 || bass > 0.72)));
   });
 
   return (
@@ -861,11 +1055,11 @@ function PostProcessing() {
         intensity={dynamicBloom} 
         mipmapBlur
       />
-      {glitchActive && (
+      {dynamicGlitch && (
         <Glitch 
-          delay={new THREE.Vector2(0.5, 1.5)} 
-          duration={new THREE.Vector2(0.1, 0.3)} 
-          strength={new THREE.Vector2(0.3, 1.0)} 
+          delay={new THREE.Vector2(0.15, 0.8)} 
+          duration={new THREE.Vector2(0.06, 0.22)} 
+          strength={new THREE.Vector2(0.18 + dynamicDistortion * 0.3, 0.55 + dynamicDistortion * 0.6)} 
           mode={GlitchMode.SPORADIC}
           ratio={0.85}
         />
@@ -876,18 +1070,104 @@ function PostProcessing() {
   );
 }
 
+function MusicCameraRig() {
+  const { camera } = useThree();
+  const { audioDriveMode, musicCameraEnabled, speed, chaos } = useStore();
+  const lookTarget = useMemo(() => new THREE.Vector3(), []);
+  const targetPosition = useMemo(() => new THREE.Vector3(0, 0, 5), []);
+
+  useFrame((state) => {
+    const { bass, subBass, mid, treble, beat, energy } = getAudioDriveSnapshot(audioDriveMode);
+    const amount = musicCameraEnabled ? 0.8 : 0;
+    const time = state.clock.elapsedTime * (0.2 + speed * 0.18);
+    const orbit = time + bass * 1.8 * amount + treble * 0.8 * amount;
+    const radius = 5 + subBass * 2.8 * amount + beat * 0.9 * amount;
+    const lift = Math.sin(time * 1.7) * (0.35 + mid * 1.2) * amount;
+
+    targetPosition.set(
+      Math.sin(orbit) * (0.35 + chaos * 0.22) * amount,
+      lift,
+      radius + Math.cos(orbit * 0.7) * 0.75 * amount
+    );
+
+    camera.position.lerp(targetPosition, 0.055);
+    lookTarget.set(
+      Math.sin(time * 1.3) * treble * 0.55 * amount,
+      Math.cos(time * 1.1) * mid * 0.45 * amount,
+      beat * 0.18 * amount
+    );
+    camera.lookAt(lookTarget);
+
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const nextFov = 60 + energy * 8 * amount + beat * 4 * amount;
+      camera.fov += (nextFov - camera.fov) * 0.08;
+      camera.updateProjectionMatrix();
+    }
+  });
+
+  return null;
+}
+
+function AudioMorphTone() {
+  const { scene } = useThree();
+  const { audioDriveMode, autoVjEnabled, bgColor, baseColor, secondaryColor } = useStore();
+  const quietColor = useMemo(() => new THREE.Color(), []);
+  const pulseColor = useMemo(() => new THREE.Color(), []);
+  const targetColor = useMemo(() => new THREE.Color(), []);
+
+  useFrame(() => {
+    quietColor.set(bgColor);
+
+    if (!autoVjEnabled) {
+      scene.background = quietColor;
+      return;
+    }
+
+    const { bass, treble, energy, beat } = getAudioDriveSnapshot(audioDriveMode);
+    pulseColor.set(treble > bass ? secondaryColor : baseColor);
+    targetColor.copy(quietColor).lerp(pulseColor, Math.min(0.45, energy * 0.28 + beat * 0.16));
+    scene.background = targetColor.clone();
+  });
+
+  return null;
+}
+
 export function Visualizer() {
-  const { isFullscreen, contrast, brightness, saturation, bgColor } = useStore();
+  const { audioDriveMode, autoVjEnabled, contrast, brightness, saturation, bgColor } = useStore();
+  const [audioFilter, setAudioFilter] = useState({ contrast: 0, brightness: 0, saturation: 0 });
+
+  useEffect(() => {
+    if (!autoVjEnabled) {
+      setAudioFilter({ contrast: 0, brightness: 0, saturation: 0 });
+      return;
+    }
+
+    let frame = 0;
+    const updateFilter = () => {
+      const { bass, treble, energy, beat } = getAudioDriveSnapshot(audioDriveMode);
+      setAudioFilter({
+        contrast: energy * 0.12 + beat * 0.08,
+        brightness: bass * 0.08 + beat * 0.08,
+        saturation: treble * 0.35 + energy * 0.12,
+      });
+      frame = requestAnimationFrame(updateFilter);
+    };
+
+    updateFilter();
+    return () => cancelAnimationFrame(frame);
+  }, [audioDriveMode, autoVjEnabled]);
   
   return (
     <div 
       className="absolute inset-0 w-full h-full"
       style={{
-        filter: `contrast(${contrast}) brightness(${brightness}) saturate(${saturation})`
+        filter: `contrast(${contrast + audioFilter.contrast}) brightness(${brightness + audioFilter.brightness}) saturate(${saturation + audioFilter.saturation})`
       }}
     >
       <Canvas camera={{ position: [0, 0, 5], fov: 60 }} dpr={[1, 2]} gl={{ antialias: true, alpha: false }}>
         <color attach="background" args={[bgColor]} />
+        <AudioMorphTone />
+        <MusicCameraRig />
         <SceneRouter />
         <VisualText />
         <PostProcessing />
@@ -895,4 +1175,3 @@ export function Visualizer() {
     </div>
   );
 }
-

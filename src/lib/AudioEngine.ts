@@ -4,6 +4,7 @@ export class AudioEngine {
   public context: AudioContext | null = null;
   public analyser: AnalyserNode | null = null;
   public dataArray: Uint8Array | null = null;
+  public timeDataArray: Uint8Array | null = null;
   public source: MediaStreamAudioSourceNode | null = null;
   
   // Expose analyzed data for Three.js to read synchronously without React state overhead
@@ -22,6 +23,7 @@ export class AudioEngine {
   private beatThreshold = 1.3;
   private energyHistory: number[] = new Array(64).fill(0);
   private energyIndex = 0;
+  private adaptivePeak = 0.18;
 
   private constructor() {}
 
@@ -52,6 +54,7 @@ export class AudioEngine {
       this.source.connect(this.analyser);
       
       this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+      this.timeDataArray = new Uint8Array(this.analyser.fftSize);
       this.isSimulating = false;
     } catch (err) {
       console.warn('Failed to initialize audio capture. Falling back to simulated audio:', err);
@@ -76,14 +79,16 @@ export class AudioEngine {
       return;
     }
 
-    if (!this.analyser || !this.dataArray) return;
+    if (!this.analyser || !this.dataArray || !this.timeDataArray) return;
 
     this.analyser.getByteFrequencyData(this.dataArray);
+    this.analyser.getByteTimeDomainData(this.timeDataArray);
 
     const data = this.dataArray;
     const length = data.length; // 1024 bins at 44100Hz = ~21.5Hz per bin
     
-    const noiseGate = (config?.noiseGate ?? 0.1) * 255;
+    const noiseGate = (config?.noiseGate ?? 0.1) * 255 * 0.75;
+    const rmsGate = 0.018 + (config?.noiseGate ?? 0.1) * 0.18;
 
     // Frequencies approximate mappings:
     // Sub: 20-60Hz -> bins 1-3
@@ -114,17 +119,40 @@ export class AudioEngine {
     const trebSense = config?.trebleSense ?? 1.0;
     const bm = config?.beatMultiplier ?? 1.0;
 
-    const volume = (vSum / length / 255) * gain;
-    this.current.volume = volume;
-    this.current.subBass = (subSum / 2 / 255) * gain * subSense;
-    this.current.bass = (bSum / 9 / 255) * gain * bassSense;
-    this.current.lowMid = (lmSum / 12 / 255) * gain * midSense;
-    this.current.mid = (mSum / 69 / 255) * gain * midSense;
-    this.current.highMid = (hmSum / 187 / 255) * gain * trebSense;
-    this.current.treble = (tSum / (length - 280) / 255) * gain * trebSense;
+    let rmsSum = 0;
+    for (let i = 0; i < this.timeDataArray.length; i++) {
+      const centered = (this.timeDataArray[i] - 128) / 128;
+      rmsSum += centered * centered;
+    }
+    const rms = Math.sqrt(rmsSum / this.timeDataArray.length);
+    const gatedRms = Math.max(0, rms - rmsGate);
+
+    const freqVolume = (vSum / length / 255) * gain;
+    const rawVolume = Math.max(freqVolume * 2.6, gatedRms * 5.5) * gain;
+    this.adaptivePeak = Math.max(rawVolume, this.adaptivePeak * 0.996, 0.16);
+    const volume = Math.min(1, Math.pow(rawVolume / (this.adaptivePeak + 0.001), 0.95));
+
+    const subRaw = (subSum / 2 / 255) * gain * subSense;
+    const bassRaw = (bSum / 9 / 255) * gain * bassSense;
+    const lowMidRaw = (lmSum / 12 / 255) * gain * midSense;
+    const midRaw = (mSum / 69 / 255) * gain * midSense;
+    const highMidRaw = (hmSum / 187 / 255) * gain * trebSense;
+    const trebleRaw = (tSum / (length - 280) / 255) * gain * trebSense;
+
+    const boostBand = (value: number, floorShare = 0.12) => (
+      Math.min(1, Math.pow(Math.max(value * 3.1, volume * floorShare), 0.95))
+    );
+
+    this.current.volume += (volume - this.current.volume) * 0.22;
+    this.current.subBass += (boostBand(subRaw, 0.12) - this.current.subBass) * 0.22;
+    this.current.bass += (boostBand(bassRaw, 0.14) - this.current.bass) * 0.22;
+    this.current.lowMid += (boostBand(lowMidRaw, 0.1) - this.current.lowMid) * 0.2;
+    this.current.mid += (boostBand(midRaw, 0.09) - this.current.mid) * 0.2;
+    this.current.highMid += (boostBand(highMidRaw, 0.07) - this.current.highMid) * 0.18;
+    this.current.treble += (boostBand(trebleRaw, 0.06) - this.current.treble) * 0.18;
 
     // Advanced Energy & Beat Detection
-    const instantaneousEnergy = volume;
+    const instantaneousEnergy = this.current.volume;
     this.energyHistory[this.energyIndex] = instantaneousEnergy;
     this.energyIndex = (this.energyIndex + 1) % this.energyHistory.length;
 
@@ -134,14 +162,14 @@ export class AudioEngine {
     }
     localEnergyAverage /= this.energyHistory.length;
 
-    this.current.energy = localEnergyAverage;
+    this.current.energy += (instantaneousEnergy - this.current.energy) * 0.22;
 
     // Beat Detection (Sudden peak in energy compared to local average)
     const ratio = instantaneousEnergy / (localEnergyAverage + 0.001);
-    if (ratio > this.beatThreshold && instantaneousEnergy > 0.1) {
-        this.current.beat = ratio * bm;
+    if (ratio > 1.55 && instantaneousEnergy > 0.14) {
+        this.current.beat = Math.min(1.6, ratio * bm * 0.75);
     } else {
-        this.current.beat = 0;
+        this.current.beat *= 0.62;
     }
   }
 

@@ -8,6 +8,7 @@ export function PresetPanel() {
   
   const presets = [
     { id: 'Dumbar Base', name: strings.PRESET_DUMBAR || 'Studio Dumbar', desc: strings.PRESET_DUMBAR_DESC || 'High-contrast kinetic typography', scene: 'Dumbar' },
+    { id: 'Sonic Topology', name: strings.PRESET_TOPOLOGY || 'Sonic Topology', desc: strings.PRESET_TOPOLOGY_DESC || 'Liquified contour type', scene: 'Topology' },
     { id: 'Liquid Dream', name: strings.PRESET_LIQUID || 'Liquid Dream', desc: strings.PRESET_LIQUID_DESC || 'Slow purple fluid', scene: 'Liquid' },
     { id: 'Cyberpunk', name: strings.PRESET_CYBER || 'Cyberpunk', desc: strings.PRESET_CYBER_DESC || 'Neon blue, high glitch', scene: 'Cyber' },
     { id: 'Dark Space', name: strings.PRESET_VOID || 'Dark Space', desc: strings.PRESET_VOID_DESC || 'Monochrome void', scene: 'Void' },

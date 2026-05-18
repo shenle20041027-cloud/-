@@ -61,6 +61,8 @@ export const t = {
     RGB_SPLIT: "RGB Split",
     DISTORTION: "Distortion",
     DIGITAL_GLITCH: "Digital Glitch",
+    AUDIO_REACTIVE_FX: "Audio Reactive FX",
+    AUDIO_REACTIVE_FX_HINT: "Music or microphone drives this FX stack in real time.",
     ON: "ON",
     OFF: "OFF",
 
@@ -75,6 +77,8 @@ export const t = {
     PRESET_VOID_DESC: "Monochrome void",
     PRESET_PULSE: "Neon Pulse",
     PRESET_PULSE_DESC: "Aggressive pink bass",
+    PRESET_TOPOLOGY: "Sonic Topology",
+    PRESET_TOPOLOGY_DESC: "Liquified contour type",
 
     // Scene Panel
     SCENE_TIMELINE: "SCENE TIMELINE",
@@ -84,12 +88,37 @@ export const t = {
       Liquid: "LIQUID",
       Calm: "CALM",
       Void: "DARK SPACE",
+      Topology: "SONIC TOPOLOGY",
       Pulse: "NEON PULSE"
     },
 
     // Control Panel
     PERFORMANCE_PAD: "PERFORMANCE PAD",
     PAD_INFO: "X: SPEED / Y: CHAOS",
+    AUDIO_MORPH_ENGINE: "AUDIO MORPH ENGINE",
+    MUSIC_DYNAMICS_LINK: "Microphone Reactive Motion",
+    MUSIC_DYNAMICS_HINT: "Live microphone input drives the current visual motion.",
+    LIVE_MIC_INPUT: "Live Mic Input",
+    AUDIO_DRIVE_SOURCE: "Drive Source",
+    DRIVE_MIC: "Mic",
+    DRIVE_MUSIC: "Music",
+    DRIVE_LOW: "Low",
+    DRIVE_MID: "Mid",
+    DRIVE_HIGH: "High",
+    MIC_VOLUME: "Mic Volume",
+    MIC_BASS: "Low Frequency",
+    MIC_BEAT: "Beat Pulse",
+    DRIVE_LEVEL: "Drive Level",
+    DRIVE_BAND_ENERGY: "Band Energy",
+    DRIVE_PULSE: "Pulse",
+    REACT_INSIDE_CURRENT_VISUAL: "React inside current visual",
+    ORBIT_CAMERA_WITH_MUSIC: "Orbit camera with microphone",
+    MORPH_SENSITIVITY: "Morph Sensitivity",
+    BEAT_PUNCH: "Beat Punch",
+    CAMERA_MOTION: "Camera Motion",
+    VISUAL_MEMORY: "VISUAL MEMORY",
+    VISUAL_MEMORY_EMPTY: "Save a look after tuning scene, colors and FX. Memories are recalled manually, so music keeps the current visual identity.",
+    SAVE_CURRENT_VISUAL_STATE: "Save current visual state",
 
     // Text Engine
     TEXT_ENGINE: "TEXT ENGINE",
@@ -176,6 +205,8 @@ export const t = {
     RGB_SPLIT: "RGB分离",
     DISTORTION: "空间扭曲",
     DIGITAL_GLITCH: "数字故障",
+    AUDIO_REACTIVE_FX: "音频驱动特效",
+    AUDIO_REACTIVE_FX_HINT: "音乐或麦克风会实时推动这个特效堆栈。",
     ON: "开启",
     OFF: "关闭",
 
@@ -190,6 +221,8 @@ export const t = {
     PRESET_VOID_DESC: "单色虚空与纯粹粒子",
     PRESET_PULSE: "霓虹脉冲 (Neon Pulse)",
     PRESET_PULSE_DESC: "激进发光的贝斯律动",
+    PRESET_TOPOLOGY: "声波拓扑",
+    PRESET_TOPOLOGY_DESC: "液化等高线文字",
 
     // Scene Panel
     SCENE_TIMELINE: "场景时间轴",
@@ -199,12 +232,37 @@ export const t = {
       Liquid: "流体",
       Calm: "宁静",
       Void: "暗黑深空",
+      Topology: "声波拓扑",
       Pulse: "霓虹脉冲"
     },
 
     // Control Panel
     PERFORMANCE_PAD: "演出控制板",
     PAD_INFO: "X: 速度 / Y: 混乱度",
+    AUDIO_MORPH_ENGINE: "音频变形引擎",
+    MUSIC_DYNAMICS_LINK: "麦克风动态驱动",
+    MUSIC_DYNAMICS_HINT: "实时麦克风收音会驱动当前视觉的动态。",
+    LIVE_MIC_INPUT: "实时麦克风输入",
+    AUDIO_DRIVE_SOURCE: "驱动来源",
+    DRIVE_MIC: "麦克风",
+    DRIVE_MUSIC: "音乐",
+    DRIVE_LOW: "低频",
+    DRIVE_MID: "中频",
+    DRIVE_HIGH: "高频",
+    MIC_VOLUME: "麦克风音量",
+    MIC_BASS: "低频能量",
+    MIC_BEAT: "节拍脉冲",
+    DRIVE_LEVEL: "驱动强度",
+    DRIVE_BAND_ENERGY: "频段能量",
+    DRIVE_PULSE: "脉冲",
+    REACT_INSIDE_CURRENT_VISUAL: "在当前视觉内响应",
+    ORBIT_CAMERA_WITH_MUSIC: "视角跟随麦克风转动",
+    MORPH_SENSITIVITY: "变形灵敏度",
+    BEAT_PUNCH: "节拍冲击",
+    CAMERA_MOTION: "相机运动",
+    VISUAL_MEMORY: "视觉记忆",
+    VISUAL_MEMORY_EMPTY: "调好场景、颜色和特效后保存一个视觉记忆。记忆只会手动调用，音乐会保持当前视觉身份。",
+    SAVE_CURRENT_VISUAL_STATE: "保存当前视觉状态",
 
     // Text Engine
     TEXT_ENGINE: "视觉文字引擎",
