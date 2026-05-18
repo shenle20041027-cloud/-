@@ -583,10 +583,530 @@ function PulseScene() {
   );
 }
 
+const spectrumVertex = `
+  varying vec3 vWorldPosition;
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPosition.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  }
+`;
+
+const spectrumFragment = `
+  uniform vec3 uBaseColor;
+  uniform vec3 uAccentColor;
+  uniform float uEnergy;
+  varying vec3 vWorldPosition;
+  varying vec2 vUv;
+
+  void main() {
+    float verticalFade = smoothstep(-0.6, 1.0, vUv.y);
+    float edge = smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x);
+    vec3 color = mix(uBaseColor * 0.45, uAccentColor, verticalFade);
+    color += uBaseColor * pow(verticalFade, 3.0) * (0.6 + uEnergy);
+    gl_FragColor = vec4(color, edge * (0.72 + uEnergy * 0.28));
+  }
+`;
+
+function SpectrumScene() {
+  const groupRef = useRef<THREE.Group>(null);
+  const floorRef = useRef<THREE.ShaderMaterial>(null);
+  const { baseColor, secondaryColor, speed } = useStore();
+
+  const bars = useMemo(() => {
+    const items: Array<{ x: number; z: number; phase: number; band: number }> = [];
+    const columns = 17;
+    const rows = 9;
+    for (let x = 0; x < columns; x++) {
+      for (let z = 0; z < rows; z++) {
+        items.push({
+          x: (x - (columns - 1) / 2) * 0.62,
+          z: (z - (rows - 1) / 2) * 0.66,
+          phase: x * 0.35 + z * 0.52,
+          band: (x / (columns - 1) + z / (rows - 1)) * 0.5
+        });
+      }
+    }
+    return items;
+  }, []);
+
+  useFrame((state) => {
+    if (!groupRef.current) return;
+    const { subBass, bass, mid, highMid, treble, energy, beat } = audioEngine.current;
+    const levels = [subBass, bass, mid, highMid, treble];
+    const time = state.clock.elapsedTime * speed;
+
+    groupRef.current.rotation.y = Math.sin(time * 0.25) * 0.18;
+    groupRef.current.position.y = -0.95 - beat * 0.12;
+
+    groupRef.current.children.forEach((child, index) => {
+      const mesh = child as THREE.Mesh;
+      const config = bars[index];
+      const bandIndex = Math.min(levels.length - 1, Math.floor(config.band * levels.length));
+      const band = levels[bandIndex] || 0;
+      const ripple = Math.sin(time * 2.4 + config.phase) * 0.24 + 0.76;
+      const height = 0.18 + band * 4.6 + energy * 0.75 * ripple + beat * 1.3;
+      mesh.scale.y += (height - mesh.scale.y) * 0.24;
+      mesh.position.y = mesh.scale.y * 0.5;
+      mesh.rotation.y = Math.sin(time + config.phase) * 0.12 * energy;
+
+      const mat = mesh.material as THREE.ShaderMaterial;
+      mat.uniforms.uBaseColor.value.set(baseColor);
+      mat.uniforms.uAccentColor.value.set(secondaryColor);
+      mat.uniforms.uEnergy.value = energy;
+    });
+
+    if (floorRef.current) {
+      floorRef.current.uniforms.uTime.value = time;
+      floorRef.current.uniforms.uEnergy.value = energy;
+      floorRef.current.uniforms.uColor.value.set(baseColor);
+    }
+  });
+
+  return (
+    <group>
+      <mesh position={[0, -1.08, -1.5]} rotation={[-Math.PI / 2, 0, 0]} scale={[18, 14, 1]}>
+        <planeGeometry args={[1, 1, 1, 1]} />
+        <shaderMaterial
+          ref={floorRef}
+          vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+          fragmentShader={`
+            uniform float uTime;
+            uniform float uEnergy;
+            uniform vec3 uColor;
+            varying vec2 vUv;
+            void main() {
+              vec2 p = vUv * 2.0 - 1.0;
+              float grid = max(smoothstep(0.97, 1.0, abs(sin((p.x + uTime * 0.04) * 28.0))), smoothstep(0.97, 1.0, abs(sin((p.y - uTime * 0.08) * 22.0))));
+              float fade = smoothstep(1.4, 0.1, length(p));
+              gl_FragColor = vec4(uColor * grid * fade * (0.22 + uEnergy * 0.55), grid * fade);
+            }
+          `}
+          uniforms={{
+            uTime: { value: 0 },
+            uEnergy: { value: 0 },
+            uColor: { value: new THREE.Color() }
+          }}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      <group ref={groupRef} position={[0, -0.95, -2.2]}>
+        {bars.map((bar, index) => (
+          <mesh key={`${bar.x}-${bar.z}-${index}`} position={[bar.x, 0.1, bar.z]}>
+            <boxGeometry args={[0.34, 1, 0.34]} />
+            <shaderMaterial
+              vertexShader={spectrumVertex}
+              fragmentShader={spectrumFragment}
+              uniforms={{
+                uBaseColor: { value: new THREE.Color(baseColor) },
+                uAccentColor: { value: new THREE.Color(secondaryColor) },
+                uEnergy: { value: 0 }
+              }}
+              transparent
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  );
+}
+
+const kaleidoFragment = `
+  uniform float uTime;
+  uniform float uBass;
+  uniform float uMid;
+  uniform float uTreble;
+  uniform float uEnergy;
+  uniform vec3 uBaseColor;
+  uniform vec3 uSecondaryColor;
+  uniform vec3 uAccentColor;
+  varying vec2 vUv;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    p.x *= 1.78;
+    float radius = length(p);
+    float angle = atan(p.y, p.x);
+    float slices = 8.0 + floor(uBass * 8.0);
+    float folded = abs(mod(angle + uTime * (0.15 + uTreble * 0.6), 6.283185 / slices) - 3.141592 / slices);
+    vec2 k = vec2(cos(folded), sin(folded)) * radius;
+
+    float rings = sin(radius * (20.0 + uBass * 18.0) - uTime * 4.0);
+    float spokes = sin(k.x * 22.0 + uTime * 2.0) * sin(k.y * 18.0 - uTime * 1.6);
+    float cells = smoothstep(0.42, 0.96, rings * 0.5 + spokes * 0.5 + uMid * 0.45);
+    float petals = smoothstep(0.65, 0.1, abs(sin(folded * slices * 0.5 + radius * 7.0 - uTime)));
+    float sparkle = step(0.985 - uTreble * 0.04, hash(floor(k * 24.0 + uTime * 3.0)));
+
+    vec3 color = mix(uBaseColor * 0.08, uSecondaryColor, cells);
+    color = mix(color, uBaseColor, petals * (0.25 + uEnergy * 0.55));
+    color += uAccentColor * sparkle * (0.5 + uTreble * 1.8);
+    color *= smoothstep(1.35, 0.05, radius);
+    color += uBaseColor * pow(max(0.0, 1.0 - radius), 4.0) * (0.5 + uBass);
+
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+function KaleidoScene() {
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+  const { baseColor, secondaryColor, accentColor, speed } = useStore();
+
+  useFrame((state) => {
+    if (!matRef.current) return;
+    const { bass, mid, treble, energy } = audioEngine.current;
+    matRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
+    matRef.current.uniforms.uBass.value = bass;
+    matRef.current.uniforms.uMid.value = mid;
+    matRef.current.uniforms.uTreble.value = treble;
+    matRef.current.uniforms.uEnergy.value = energy;
+    matRef.current.uniforms.uBaseColor.value.set(baseColor);
+    matRef.current.uniforms.uSecondaryColor.value.set(secondaryColor);
+    matRef.current.uniforms.uAccentColor.value.set(accentColor);
+  });
+
+  return (
+    <mesh position={[0, 0, -2]}>
+      <planeGeometry args={[24, 14]} />
+      <shaderMaterial
+        ref={matRef}
+        vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+        fragmentShader={kaleidoFragment}
+        uniforms={{
+          uTime: { value: 0 },
+          uBass: { value: 0 },
+          uMid: { value: 0 },
+          uTreble: { value: 0 },
+          uEnergy: { value: 0 },
+          uBaseColor: { value: new THREE.Color(baseColor) },
+          uSecondaryColor: { value: new THREE.Color(secondaryColor) },
+          uAccentColor: { value: new THREE.Color(accentColor) }
+        }}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+const tunnelFragment = `
+  uniform float uTime;
+  uniform float uBass;
+  uniform float uMid;
+  uniform float uTreble;
+  uniform float uEnergy;
+  uniform vec3 uBaseColor;
+  uniform vec3 uSecondaryColor;
+  uniform vec3 uAccentColor;
+  varying vec2 vUv;
+
+  float hash(float n) {
+    return fract(sin(n) * 43758.5453123);
+  }
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    p.x *= 1.78;
+    float r = max(length(p), 0.001);
+    float a = atan(p.y, p.x);
+
+    float twist = sin(r * 5.0 - uTime * 1.3) * (0.25 + uMid * 0.6);
+    float tunnel = 1.0 / r + uTime * (0.7 + uBass * 1.8);
+    float bands = smoothstep(0.68, 0.98, abs(sin(tunnel * 2.8 + twist)));
+    float ribs = smoothstep(0.88, 1.0, abs(sin(a * (10.0 + floor(uTreble * 12.0)) + tunnel)));
+    float sparks = step(0.986 - uTreble * 0.035, hash(floor(a * 38.0) + floor(tunnel * 8.0)));
+
+    vec3 color = mix(uBaseColor * 0.08, uSecondaryColor, bands);
+    color += uBaseColor * ribs * (0.45 + uEnergy);
+    color += uAccentColor * sparks * (0.6 + uTreble * 2.2);
+    color *= smoothstep(1.25, 0.12, r);
+    color += uBaseColor * pow(max(0.0, 0.18 - r) * 5.0, 2.0) * (1.0 + uBass * 2.5);
+
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+function TunnelScene() {
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+  const { baseColor, secondaryColor, accentColor, speed } = useStore();
+
+  useFrame((state) => {
+    if (!matRef.current) return;
+    const { bass, mid, treble, energy } = audioEngine.current;
+    matRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
+    matRef.current.uniforms.uBass.value = bass;
+    matRef.current.uniforms.uMid.value = mid;
+    matRef.current.uniforms.uTreble.value = treble;
+    matRef.current.uniforms.uEnergy.value = energy;
+    matRef.current.uniforms.uBaseColor.value.set(baseColor);
+    matRef.current.uniforms.uSecondaryColor.value.set(secondaryColor);
+    matRef.current.uniforms.uAccentColor.value.set(accentColor);
+  });
+
+  return (
+    <mesh position={[0, 0, -2]}>
+      <planeGeometry args={[24, 14]} />
+      <shaderMaterial
+        ref={matRef}
+        vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+        fragmentShader={tunnelFragment}
+        uniforms={{
+          uTime: { value: 0 },
+          uBass: { value: 0 },
+          uMid: { value: 0 },
+          uTreble: { value: 0 },
+          uEnergy: { value: 0 },
+          uBaseColor: { value: new THREE.Color(baseColor) },
+          uSecondaryColor: { value: new THREE.Color(secondaryColor) },
+          uAccentColor: { value: new THREE.Color(accentColor) }
+        }}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+function WaveTerrainScene() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.MeshStandardMaterial>(null);
+  const { baseColor, secondaryColor, speed } = useStore();
+
+  useFrame((state) => {
+    if (!meshRef.current || !matRef.current) return;
+    const { subBass, bass, mid, highMid, treble, energy, beat } = audioEngine.current;
+    const time = state.clock.elapsedTime * speed;
+    const geometry = meshRef.current.geometry as THREE.PlaneGeometry;
+    const position = geometry.attributes.position as THREE.BufferAttribute;
+
+    for (let i = 0; i < position.count; i++) {
+      const x = position.getX(i);
+      const y = position.getY(i);
+      const distance = Math.sqrt(x * x + y * y);
+      const ridge = Math.sin(x * 1.4 + time * 2.0) * bass;
+      const cross = Math.cos(y * 1.9 - time * 1.4) * mid;
+      const ring = Math.sin(distance * (2.0 + highMid * 2.5) - time * 3.2) * (0.2 + subBass);
+      const shimmer = Math.sin((x + y) * 6.0 + time * 8.0) * treble * 0.15;
+      position.setZ(i, (ridge + cross + ring + shimmer) * (0.5 + energy) + beat * 0.4);
+    }
+
+    position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    meshRef.current.rotation.z = Math.sin(time * 0.12) * 0.08;
+    matRef.current.color.set(baseColor);
+    matRef.current.emissive.set(secondaryColor);
+    matRef.current.emissiveIntensity = 0.35 + energy * 1.4;
+    matRef.current.wireframe = true;
+  });
+
+  return (
+    <group position={[0, -1.1, -4]} rotation={[-Math.PI / 2.6, 0, 0]}>
+      <ambientLight intensity={0.5} />
+      <pointLight position={[0, 4, 3]} intensity={8} color={baseColor} />
+      <mesh ref={meshRef}>
+        <planeGeometry args={[16, 12, 80, 58]} />
+        <meshStandardMaterial ref={matRef} color={baseColor} emissive={secondaryColor} metalness={0.4} roughness={0.28} />
+      </mesh>
+    </group>
+  );
+}
+
+function CrystalScene() {
+  const groupRef = useRef<THREE.Group>(null);
+  const { baseColor, secondaryColor, accentColor, speed } = useStore();
+
+  const crystals = useMemo(() => {
+    return new Array(42).fill(0).map((_, index) => {
+      const ring = Math.floor(index / 7) + 1;
+      const angle = index * 2.399;
+      return {
+        x: Math.cos(angle) * ring * 0.36,
+        y: Math.sin(angle) * ring * 0.24,
+        z: -ring * 0.14,
+        rot: angle,
+        scale: 0.45 + (index % 7) * 0.08
+      };
+    });
+  }, []);
+
+  useFrame((state) => {
+    if (!groupRef.current) return;
+    const { bass, mid, treble, energy, beat } = audioEngine.current;
+    const time = state.clock.elapsedTime * speed;
+    groupRef.current.rotation.y = time * 0.18;
+    groupRef.current.rotation.z = Math.sin(time * 0.3) * 0.2;
+
+    groupRef.current.children.forEach((child, index) => {
+      const mesh = child as THREE.Mesh;
+      const pulse = 1 + bass * 0.5 + beat * 0.7 + Math.sin(time * 2.0 + index) * mid * 0.18;
+      mesh.scale.setScalar(crystals[index].scale * pulse);
+      mesh.rotation.x = time * (0.35 + index * 0.01) + crystals[index].rot;
+      mesh.rotation.y = time * (0.25 + treble * 0.8) + index;
+      const material = mesh.material as THREE.MeshStandardMaterial;
+      material.color.set(index % 3 === 0 ? baseColor : index % 3 === 1 ? secondaryColor : accentColor);
+      material.emissive.copy(material.color);
+      material.emissiveIntensity = 0.35 + energy * 1.3 + beat;
+    });
+  });
+
+  return (
+    <group>
+      <ambientLight intensity={0.4} />
+      <pointLight position={[3, 3, 4]} intensity={16} color={baseColor} />
+      <pointLight position={[-4, -2, 2]} intensity={10} color={secondaryColor} />
+      <group ref={groupRef} position={[0, 0, -1.7]}>
+        {crystals.map((crystal, index) => (
+          <mesh key={index} position={[crystal.x, crystal.y, crystal.z]} rotation={[crystal.rot, crystal.rot * 0.4, crystal.rot * 0.2]}>
+            <octahedronGeometry args={[1, 1]} />
+            <meshStandardMaterial transparent opacity={0.72} metalness={0.15} roughness={0.12} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  );
+}
+
+const signalBloomFragment = `
+  uniform float uTime;
+  uniform float uBass;
+  uniform float uMid;
+  uniform float uTreble;
+  uniform float uEnergy;
+  uniform vec3 uBaseColor;
+  uniform vec3 uSecondaryColor;
+  uniform vec3 uAccentColor;
+  varying vec2 vUv;
+
+  float hash(float n) {
+    return fract(sin(n) * 43758.5453123);
+  }
+
+  float hash2(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float sdEllipse(vec2 p, vec2 r) {
+    return length(p / r) - 1.0;
+  }
+
+  float softBlob(vec2 p, vec2 center, vec2 radius, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    p -= center;
+    p = mat2(c, -s, s, c) * p;
+    p.x += sin(p.y * 18.0 + uTime * 1.3) * 0.018 * (1.0 + uEnergy);
+    p.y += sin(p.x * 14.0 - uTime * 1.1) * 0.014 * (1.0 + uBass);
+    return sdEllipse(p, radius);
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    vec2 p = uv * 2.0 - 1.0;
+    p.x *= 1.78;
+
+    float time = uTime * 0.6;
+    float d = 10.0;
+    d = min(d, softBlob(p, vec2(-0.82 + sin(time) * 0.06, 0.38), vec2(0.34 + uBass * 0.08, 0.16), -0.12));
+    d = min(d, softBlob(p, vec2(0.08, 0.34 + sin(time * 0.9) * 0.04), vec2(0.42 + uMid * 0.08, 0.34), 0.24));
+    d = min(d, softBlob(p, vec2(-0.08, -0.38), vec2(0.50 + uBass * 0.1, 0.14), -0.06));
+    d = min(d, softBlob(p, vec2(0.86 + cos(time * 0.7) * 0.05, -0.34), vec2(0.34 + uMid * 0.05, 0.16), 0.08));
+    d = min(d, softBlob(p, vec2(0.55, 0.27), vec2(0.22, 0.11 + uTreble * 0.04), -0.18));
+
+    float fill = smoothstep(0.025, -0.03, d);
+    float halo = exp(-max(d, 0.0) * (5.0 - uBass * 1.5));
+    float hotEdge = smoothstep(0.055, 0.0, abs(d));
+
+    vec3 ember = mix(vec3(0.72, 0.33, 0.08), uBaseColor, 0.72);
+    vec3 red = mix(vec3(1.0, 0.0, 0.02), uSecondaryColor, 0.68);
+    vec3 whiteHot = mix(vec3(1.0), uAccentColor, 0.55);
+
+    float row = floor((uv.y + uTime * 0.03) * 88.0);
+    float rowNoise = hash(row + floor(uTime * 9.0));
+    float broken = step(0.68 - uEnergy * 0.28, rowNoise);
+    float segment = step(0.45, hash(floor(uv.x * 34.0) + row * 7.0));
+    float redScan = broken * segment * smoothstep(0.985, 1.0, abs(sin((uv.y + uTime * 0.035) * 280.0)));
+    redScan *= smoothstep(0.05, -0.02, d + 0.02);
+
+    float slitA = smoothstep(0.018, 0.0, abs(p.y - 0.43 - sin(p.x * 12.0 + time) * 0.01)) * smoothstep(0.28, 0.0, abs(p.x - 0.08));
+    float slitB = smoothstep(0.014, 0.0, abs(p.y + 0.37 - sin(p.x * 10.0 - time) * 0.012)) * smoothstep(0.48, 0.0, abs(p.x + 0.02));
+    float slitC = smoothstep(0.012, 0.0, abs(p.y + 0.31)) * smoothstep(0.18, 0.0, abs(p.x - 0.85));
+    float slits = max(max(slitA, slitB), slitC) * fill;
+
+    float smear = 0.0;
+    for (float i = 1.0; i < 8.0; i += 1.0) {
+      float trailX = uv.x - i * 0.012 * (1.0 + uBass);
+      smear += smoothstep(0.985, 1.0, abs(sin((trailX + uv.y * 0.11 + uTime * 0.09) * 120.0 + i))) / i;
+    }
+    smear *= fill * (0.12 + uTreble * 0.35);
+
+    float staticNoise = (hash2(floor(uv * vec2(360.0, 190.0)) + uTime) - 0.5) * 0.035 * (1.0 + uEnergy);
+    float vignette = smoothstep(1.25, 0.18, length(p));
+
+    vec3 color = vec3(0.0);
+    color += ember * fill * (0.9 + uBass * 0.5);
+    color += ember * halo * (0.42 + uEnergy * 0.42);
+    color += red * hotEdge * (0.45 + uTreble);
+    color += red * redScan * (1.4 + uEnergy * 2.2);
+    color += red * smear;
+    color += whiteHot * slits * (1.2 + uTreble * 1.8);
+    color += staticNoise;
+    color *= vignette;
+
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+function SignalBloomScene() {
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+  const { baseColor, secondaryColor, accentColor, speed } = useStore();
+
+  useFrame((state) => {
+    if (!matRef.current) return;
+    const { bass, mid, treble, energy } = audioEngine.current;
+    matRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
+    matRef.current.uniforms.uBass.value = bass;
+    matRef.current.uniforms.uMid.value = mid;
+    matRef.current.uniforms.uTreble.value = treble;
+    matRef.current.uniforms.uEnergy.value = energy;
+    matRef.current.uniforms.uBaseColor.value.set(baseColor);
+    matRef.current.uniforms.uSecondaryColor.value.set(secondaryColor);
+    matRef.current.uniforms.uAccentColor.value.set(accentColor);
+  });
+
+  return (
+    <mesh position={[0, 0, -2]}>
+      <planeGeometry args={[24, 14]} />
+      <shaderMaterial
+        ref={matRef}
+        vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+        fragmentShader={signalBloomFragment}
+        uniforms={{
+          uTime: { value: 0 },
+          uBass: { value: 0 },
+          uMid: { value: 0 },
+          uTreble: { value: 0 },
+          uEnergy: { value: 0 },
+          uBaseColor: { value: new THREE.Color(baseColor) },
+          uSecondaryColor: { value: new THREE.Color(secondaryColor) },
+          uAccentColor: { value: new THREE.Color(accentColor) }
+        }}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
 const TRAIL_COUNT = 12;
 
 function DumbarScene() {
-  const { textInput } = useStore();
+  const { textInput, textFontSize, textLetterSpacing } = useStore();
   const groupRef = useRef<THREE.Group>(null);
   const bgMatRef = useRef<THREE.MeshBasicMaterial>(null);
   
@@ -711,6 +1231,12 @@ function SceneRouter() {
     case 'Pulse': return <PulseScene />;
     case 'Void': return <VoidScene />;
     case 'Dumbar': return <DumbarScene />;
+    case 'Spectrum': return <SpectrumScene />;
+    case 'Kaleido': return <KaleidoScene />;
+    case 'Tunnel': return <TunnelScene />;
+    case 'Terrain': return <WaveTerrainScene />;
+    case 'Crystal': return <CrystalScene />;
+    case 'SignalBloom': return <SignalBloomScene />;
     default: return <VoidScene />;
   }
 }
@@ -877,16 +1403,21 @@ function PostProcessing() {
 }
 
 export function Visualizer() {
-  const { isFullscreen, contrast, brightness, saturation, bgColor } = useStore();
+  const { contrast, brightness, saturation, bgColor } = useStore();
   
   return (
     <div 
-      className="absolute inset-0 w-full h-full"
+      className="absolute inset-0 w-full h-full pointer-events-none"
       style={{
         filter: `contrast(${contrast}) brightness(${brightness}) saturate(${saturation})`
       }}
     >
-      <Canvas camera={{ position: [0, 0, 5], fov: 60 }} dpr={[1, 2]} gl={{ antialias: true, alpha: false }}>
+      <Canvas
+        className="pointer-events-none"
+        camera={{ position: [0, 0, 5], fov: 60 }}
+        dpr={[1, 2]}
+        gl={{ antialias: true, alpha: false }}
+      >
         <color attach="background" args={[bgColor]} />
         <SceneRouter />
         <VisualText />

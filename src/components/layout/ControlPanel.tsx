@@ -1,16 +1,17 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { Move } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
 export function ControlPanel() {
-  const { chaos, setPerformanceControl, language } = useStore();
+  const { setPerformanceControl, language } = useStore();
   const i18n = t[language];
   const padRef = useRef<HTMLDivElement>(null);
   const [padPos, setPadPos] = useState({ x: 0.5, y: 0.5 }); // Initialize to center
   const [isDragging, setIsDragging] = useState(false);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
     updatePad(e);
   };
@@ -19,7 +20,10 @@ export function ControlPanel() {
     if (isDragging) updatePad(e);
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e?: React.PointerEvent) => {
+    if (e?.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
     setIsDragging(false);
   };
 
@@ -34,13 +38,9 @@ export function ControlPanel() {
     y = Math.max(0, Math.min(1, y));
 
     setPadPos({ x, y });
-    setPerformanceControl('chaos', y * 2.0); // Map Y to chaos
+    setPerformanceControl('speed', 0.2 + x * 2.8);
+    setPerformanceControl('chaos', y * 2.0);
   };
-
-  useEffect(() => {
-    window.addEventListener('pointerup', handlePointerUp);
-    return () => window.removeEventListener('pointerup', handlePointerUp);
-  }, []);
 
   return (
     <div className="w-full p-6 flex flex-col gap-4">
@@ -57,6 +57,8 @@ export function ControlPanel() {
         className="relative w-full aspect-square bg-[#030205] border border-white/10 rounded-xl cursor-crosshair touch-none overflow-hidden hover:border-white/30 transition-colors shadow-inner"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
         {/* Grid lines and background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.05)_0%,transparent_70%)]"></div>

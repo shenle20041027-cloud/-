@@ -10,6 +10,12 @@ export function PresetPanel() {
     { id: 'Dumbar Base', name: strings.PRESET_DUMBAR || 'Studio Dumbar', desc: strings.PRESET_DUMBAR_DESC || 'High-contrast kinetic typography', scene: 'Dumbar' },
     { id: 'Liquid Dream', name: strings.PRESET_LIQUID || 'Liquid Dream', desc: strings.PRESET_LIQUID_DESC || 'Slow purple fluid', scene: 'Liquid' },
     { id: 'Cyberpunk', name: strings.PRESET_CYBER || 'Cyberpunk', desc: strings.PRESET_CYBER_DESC || 'Neon blue, high glitch', scene: 'Cyber' },
+    { id: 'Spectrum Grid', name: 'Spectrum Grid', desc: '3D reactive frequency architecture', scene: 'Spectrum' },
+    { id: 'Kaleido Burst', name: 'Kaleido Burst', desc: 'Radial mirrored audio patterns', scene: 'Kaleido' },
+    { id: 'Tunnel Drive', name: 'Tunnel Drive', desc: 'Forward motion light tunnel', scene: 'Tunnel' },
+    { id: 'Wave Terrain', name: 'Wave Terrain', desc: 'Audio-sculpted wire landscape', scene: 'Terrain' },
+    { id: 'Crystal Bloom', name: 'Crystal Bloom', desc: 'Reactive glass geometry cluster', scene: 'Crystal' },
+    { id: 'Signal Bloom', name: 'Signal Bloom', desc: 'Amber glow with red scan fragments', scene: 'SignalBloom' },
     { id: 'Dark Space', name: strings.PRESET_VOID || 'Dark Space', desc: strings.PRESET_VOID_DESC || 'Monochrome void', scene: 'Void' },
     { id: 'Neon Pulse', name: strings.PRESET_PULSE || 'Neon Pulse', desc: strings.PRESET_PULSE_DESC || 'Aggressive pink bass', scene: 'Pulse' },
   ];

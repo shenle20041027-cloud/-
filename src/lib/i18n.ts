@@ -60,6 +60,7 @@ export const t = {
     BLOOM_INTENSITY: "Bloom Intensity",
     RGB_SPLIT: "RGB Split",
     DISTORTION: "Distortion",
+    LENS_DISTORTION: "Lens Distortion",
     DIGITAL_GLITCH: "Digital Glitch",
     ON: "ON",
     OFF: "OFF",
@@ -84,7 +85,14 @@ export const t = {
       Liquid: "LIQUID",
       Calm: "CALM",
       Void: "DARK SPACE",
-      Pulse: "NEON PULSE"
+      Pulse: "NEON PULSE",
+      Dumbar: "DUMBAR",
+      Spectrum: "SPECTRUM",
+      Kaleido: "KALEIDO",
+      Tunnel: "TUNNEL",
+      Terrain: "TERRAIN",
+      Crystal: "CRYSTAL",
+      SignalBloom: "SIGNAL BLOOM"
     },
 
     // Control Panel
@@ -98,6 +106,9 @@ export const t = {
     GLOW_AMOUNT: "Glow Amount",
     MOTION_SPEED: "Motion Speed",
     REACTIVE_INTENSITY: "Reactive Intensity",
+    FONT_SIZE: "Font Size",
+    FONT_WEIGHT: "Font Weight",
+    LETTER_SPACING: "Letter Spacing",
     APPLY_TO_SCENE: "Apply To Scene",
     BTN_SAVE: "SAVE / APPLY",
     BTN_RESET: "RESET",
@@ -175,6 +186,7 @@ export const t = {
     BLOOM_INTENSITY: "泛光强度",
     RGB_SPLIT: "RGB分离",
     DISTORTION: "空间扭曲",
+    LENS_DISTORTION: "镜头畸变",
     DIGITAL_GLITCH: "数字故障",
     ON: "开启",
     OFF: "关闭",
@@ -199,7 +211,14 @@ export const t = {
       Liquid: "流体",
       Calm: "宁静",
       Void: "暗黑深空",
-      Pulse: "霓虹脉冲"
+      Pulse: "霓虹脉冲",
+      Dumbar: "动态排版",
+      Spectrum: "频谱矩阵",
+      Kaleido: "万花筒",
+      Tunnel: "光隧道",
+      Terrain: "波形地形",
+      Crystal: "晶体簇",
+      SignalBloom: "信号光斑"
     },
 
     // Control Panel
@@ -213,6 +232,9 @@ export const t = {
     GLOW_AMOUNT: "发光强度",
     MOTION_SPEED: "运动速度",
     REACTIVE_INTENSITY: "互动强度",
+    FONT_SIZE: "字体大小",
+    FONT_WEIGHT: "字体粗细",
+    LETTER_SPACING: "字距",
     APPLY_TO_SCENE: "应用到场景",
     BTN_SAVE: "保存 / 应用",
     BTN_RESET: "重置",

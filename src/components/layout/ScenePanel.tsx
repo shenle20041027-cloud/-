@@ -7,6 +7,13 @@ const scenesConfig = [
   { id: 'Liquid' },
   { id: 'Cyber' },
   { id: 'Pulse' },
+  { id: 'Dumbar' },
+  { id: 'Spectrum' },
+  { id: 'Kaleido' },
+  { id: 'Tunnel' },
+  { id: 'Terrain' },
+  { id: 'Crystal' },
+  { id: 'SignalBloom' },
 ];
 
 export function ScenePanel() {
