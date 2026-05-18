@@ -1,0 +1,9 @@
+{
+  "name": "NeonPulse VJ System",
+  "description": "Professional cyberpunk-style music-driven real-time interactive visual software for stage and VJ performances.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "majorCapabilities": []
+}

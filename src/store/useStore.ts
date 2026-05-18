@@ -1,0 +1,279 @@
+import { create } from 'zustand';
+import type { AudioDriveMode } from '../lib/audioDrive';
+
+export interface VisualMemory {
+  id: string;
+  name: string;
+  currentScene: string;
+  baseColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  bgColor: string;
+  bloomIntensity: number;
+  rgbSplitAmount: number;
+  distortion: number;
+  glitchActive: boolean;
+  speed: number;
+  chaos: number;
+  textInput: string;
+  textAnimStyle: string;
+  textGlow: number;
+  textSpeed: number;
+  textReactive: number;
+}
+
+interface VisualizerState {
+  audioReady: boolean;
+  setAudioReady: (ready: boolean) => void;
+  
+  // Language
+  language: 'EN' | 'ZH';
+  setLanguage: (lang: 'EN' | 'ZH') => void;
+  
+  // Audio Controls
+  inputGain: number;
+  bassReact: number;
+  midReact: number;
+  trebReact: number;
+  setAudioControl: (key: 'inputGain' | 'bassReact' | 'midReact' | 'trebReact', value: number) => void;
+
+  // FX Controls
+  bloomIntensity: number;
+  bloomThreshold: number;
+  glitchActive: boolean;
+  rgbSplitAmount: number;
+  distortion: number;
+  setFxControl: (key: 'bloomIntensity' | 'bloomThreshold' | 'glitchActive' | 'rgbSplitAmount' | 'distortion', value: number | boolean) => void;
+
+  // Performance Controls
+  speed: number;
+  chaos: number;
+  setPerformanceControl: (key: 'speed' | 'chaos', value: number) => void;
+  
+  // Scene
+  currentScene: string;
+  setCurrentScene: (scene: string) => void;
+
+  // Text Engine
+  textInput: string;
+  textAnimStyle: string;
+  textGlow: number;
+  textSpeed: number;
+  textReactive: number;
+  setTextEngine: (key: 'textInput' | 'textAnimStyle' | 'textGlow' | 'textSpeed' | 'textReactive', value: string | number) => void;
+
+  // Enhancements
+  baseColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  bgColor: string;
+  saturation: number;
+  contrast: number;
+  brightness: number;
+  gamma: number;
+  exposure: number;
+  setColorGrading: (key: Extract<keyof VisualizerState, 'baseColor' | 'secondaryColor' | 'accentColor' | 'bgColor' | 'saturation' | 'contrast' | 'brightness' | 'gamma' | 'exposure'>, value: string | number) => void;
+
+  // Audio Advanced
+  subBassSense: number;
+  bassSense: number;
+  midSense: number;
+  trebleSense: number;
+  noiseGate: number;
+  beatMultiplier: number;
+  setAudioParam: (key: Extract<keyof VisualizerState, 'subBassSense' | 'bassSense' | 'midSense' | 'trebleSense' | 'noiseGate' | 'beatMultiplier'>, value: number) => void;
+
+  isFullscreen: boolean;
+  setIsFullscreen: (val: boolean) => void;
+  activeLeftPanel: string;
+  setActiveLeftPanel: (panel: string) => void;
+  applyPreset: (presetId: string) => void;
+
+  // Auto VJ
+  autoVjEnabled: boolean;
+  memoryRecallEnabled: boolean;
+  musicCameraEnabled: boolean;
+  audioFxReactive: boolean;
+  autoVjSensitivity: number;
+  musicCameraAmount: number;
+  transitionEnergy: number;
+  audioDriveMode: AudioDriveMode;
+  visualMemories: VisualMemory[];
+  setAutoVjControl: (key: 'autoVjEnabled' | 'memoryRecallEnabled' | 'musicCameraEnabled' | 'audioFxReactive', value: boolean) => void;
+  setAutoVjAmount: (key: 'autoVjSensitivity' | 'musicCameraAmount' | 'transitionEnergy', value: number) => void;
+  setAudioDriveMode: (mode: AudioDriveMode) => void;
+  saveVisualMemory: () => void;
+  applyVisualMemory: (id: string) => void;
+}
+
+const createMemorySnapshot = (state: VisualizerState, name: string): VisualMemory => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  name,
+  currentScene: state.currentScene,
+  baseColor: state.baseColor,
+  secondaryColor: state.secondaryColor,
+  accentColor: state.accentColor,
+  bgColor: state.bgColor,
+  bloomIntensity: state.bloomIntensity,
+  rgbSplitAmount: state.rgbSplitAmount,
+  distortion: state.distortion,
+  glitchActive: state.glitchActive,
+  speed: state.speed,
+  chaos: state.chaos,
+  textInput: state.textInput,
+  textAnimStyle: state.textAnimStyle,
+  textGlow: state.textGlow,
+  textSpeed: state.textSpeed,
+  textReactive: state.textReactive,
+});
+
+const applyMemoryState = (memory: VisualMemory) => ({
+  currentScene: memory.currentScene,
+  baseColor: memory.baseColor,
+  secondaryColor: memory.secondaryColor,
+  accentColor: memory.accentColor,
+  bgColor: memory.bgColor,
+  bloomIntensity: memory.bloomIntensity,
+  rgbSplitAmount: memory.rgbSplitAmount,
+  distortion: memory.distortion,
+  glitchActive: memory.glitchActive,
+  speed: memory.speed,
+  chaos: memory.chaos,
+  textInput: memory.textInput,
+  textAnimStyle: memory.textAnimStyle,
+  textGlow: memory.textGlow,
+  textSpeed: memory.textSpeed,
+  textReactive: memory.textReactive,
+});
+
+const MEMORY_STORAGE_KEY = 'neonpulse.visualMemories';
+
+const loadStoredMemories = (): VisualMemory[] => {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(MEMORY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistMemories = (memories: VisualMemory[]) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(memories));
+  } catch {
+    // If storage is unavailable, the in-memory session still works.
+  }
+};
+
+export const useStore = create<VisualizerState>((set) => ({
+  audioReady: false,
+  setAudioReady: (ready) => set({ audioReady: ready }),
+
+  // Language
+  language: 'EN',
+  setLanguage: (lang) => set({ language: lang }),
+
+  // Audio Defaults
+  inputGain: 1.0,
+  bassReact: 1.5,
+  midReact: 1.0,
+  trebReact: 1.2,
+  setAudioControl: (key, value) => set({ [key]: value }),
+
+  // FX Defaults
+  bloomIntensity: 1.5,
+  bloomThreshold: 0.2,
+  glitchActive: false,
+  rgbSplitAmount: 0.005,
+  distortion: 0.0,
+  setFxControl: (key, value) => set({ [key]: value }),
+
+  // Performance Defaults
+  speed: 1.0,
+  chaos: 0.0,
+  setPerformanceControl: (key, value) => set({ [key]: value }),
+
+  // Scene
+  currentScene: 'Cyber',
+  setCurrentScene: (scene) => set({ currentScene: scene }),
+
+  // Text Engine Defaults
+  textInput: 'NEONPULSE',
+  textAnimStyle: 'Cinematic Title',
+  textGlow: 1.0,
+  textSpeed: 1.0,
+  textReactive: 1.0,
+  setTextEngine: (key, value) => set({ [key]: value }),
+
+  baseColor: '#00f3ff',
+  secondaryColor: '#bf00ff',
+  accentColor: '#ffffff',
+  bgColor: '#030008',
+  saturation: 1.0,
+  contrast: 1.0,
+  brightness: 1.0,
+  gamma: 1.0,
+  exposure: 1.2,
+  setColorGrading: (key, value) => set({ [key]: value as any }),
+
+  subBassSense: 1.0,
+  bassSense: 1.0,
+  midSense: 1.0,
+  trebleSense: 1.0,
+  noiseGate: 0.1,
+  beatMultiplier: 1.0,
+  setAudioParam: (key, value) => set({ [key]: value }),
+
+  isFullscreen: false,
+  setIsFullscreen: (val) => set({ isFullscreen: val }),
+  activeLeftPanel: 'Presets',
+  setActiveLeftPanel: (panel) => set({ activeLeftPanel: panel }),
+  autoVjEnabled: true,
+  memoryRecallEnabled: true,
+  musicCameraEnabled: true,
+  audioFxReactive: true,
+  autoVjSensitivity: 1.0,
+  musicCameraAmount: 0.8,
+  transitionEnergy: 0.45,
+  audioDriveMode: 'mic',
+  visualMemories: loadStoredMemories(),
+  setAutoVjControl: (key, value) => set({ [key]: value }),
+  setAutoVjAmount: (key, value) => set({ [key]: value }),
+  setAudioDriveMode: (mode) => set({ audioDriveMode: mode }),
+  saveVisualMemory: () => set((state) => {
+    const memory = createMemorySnapshot(state, `Memory ${Math.min(state.visualMemories.length + 1, 8)}`);
+    const visualMemories = [memory, ...state.visualMemories].slice(0, 8);
+    persistMemories(visualMemories);
+    return { visualMemories };
+  }),
+  applyVisualMemory: (id) => set((state) => {
+    const memory = state.visualMemories.find((item) => item.id === id);
+    return memory ? applyMemoryState(memory) : {};
+  }),
+  applyPreset: (presetId) => {
+    switch(presetId) {
+       case 'Cyberpunk':
+          set({ currentScene: 'Cyber', baseColor: '#00f3ff', secondaryColor: '#bf00ff', bloomIntensity: 2, textAnimStyle: 'Glitch' });
+          break;
+       case 'Liquid Dream':
+          set({ currentScene: 'Liquid', baseColor: '#b026ff', secondaryColor: '#00ccff', bloomIntensity: 1.5, textAnimStyle: 'Floating' });
+          break;
+       case 'Sonic Topology':
+          set({ currentScene: 'Topology', baseColor: '#ffffff', secondaryColor: '#ff3366', bgColor: '#000000', bloomIntensity: 1.8, distortion: 0.18, speed: 1.0, chaos: 0.25, textAnimStyle: 'Cinematic Title' });
+          break;
+       case 'Neon Pulse':
+          set({ currentScene: 'Pulse', baseColor: '#ff007f', secondaryColor: '#ff003c', glitchActive: true, bloomIntensity: 3, textAnimStyle: 'Beat' });
+          break;
+       case 'Dark Space':
+          set({ currentScene: 'Void', baseColor: '#ffffff', secondaryColor: '#444444', bloomIntensity: 1, textAnimStyle: 'Massive' });
+          break;
+       case 'Dumbar Base':
+          set({ currentScene: 'Dumbar', baseColor: '#ffffff', secondaryColor: '#000000', bgColor: '#050505', textAnimStyle: 'Dumbar', contrast: 1.5, saturation: 1.0 });
+          break;
+    }
+  }
+}));

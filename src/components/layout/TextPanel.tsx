@@ -1,0 +1,148 @@
+import { useStore } from '@/store/useStore';
+import { Type, Save, RotateCcw, Trash2 } from 'lucide-react';
+import { t } from '@/lib/i18n';
+import { useState, useEffect } from 'react';
+
+const TextSlider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) => (
+  <div className="flex flex-col gap-2 mb-4">
+    <div className="flex justify-between text-[10px] uppercase font-bold text-white/40 tracking-widest">
+      <span>{label}</span>
+      <span className="text-white bg-white/5 px-2 py-0.5 rounded border border-white/5">{value.toFixed(2)}</span>
+    </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value))}
+      className="w-full h-1 bg-white/10 rounded-full appearance-none outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-150 transition-all cursor-pointer"
+    />
+  </div>
+);
+
+export function TextPanel() {
+  const { language, textInput, textAnimStyle, textGlow, textSpeed, textReactive, setTextEngine, applyPreset } = useStore();
+  const i18n = t[language];
+  const [localText, setLocalText] = useState(textInput);
+
+  useEffect(() => {
+    setLocalText(textInput);
+  }, [textInput]);
+
+  const styles = [
+    { id: 'Cinematic', label: i18n.CinematicTitle || 'Cinematic Title' },
+    { id: 'Massive', label: i18n.MassiveTypography || 'Massive Typography' },
+    { id: 'Glitch', label: i18n.CyberGlitch || 'Cyber Glitch' },
+    { id: 'Hologram', label: i18n.HologramText || 'Hologram Text' },
+    { id: 'Floating', label: i18n.FloatingWords || 'Floating Words' },
+    { id: 'Beat', label: i18n.BeatTypography || 'Beat Sync Text' },
+  ];
+
+  const handleApply = () => {
+    setTextEngine('textInput', localText || " ");
+    const lower = localText.toLowerCase();
+    
+    // Auto sync with visuals occasionally
+    if (lower.includes('cyber') || lower.includes('future') || lower.includes('glitch')) {
+      applyPreset('Cyberpunk');
+    } else if (lower.includes('dream') || lower.includes('ocean') || lower.includes('water')) {
+      applyPreset('Liquid Dream');
+    } else if (lower.includes('chaos') || lower.includes('rage')) {
+      applyPreset('Neon Pulse');
+      setTextEngine('textAnimStyle', 'Glitch');
+    } else if (lower.includes('space') || lower.includes('void')) {
+      applyPreset('Dark Space');
+    }
+  };
+
+  const handleReset = () => {
+    setLocalText('NEONPULSE');
+    setTextEngine('textInput', 'NEONPULSE');
+  };
+
+  const handleClear = () => {
+    setLocalText('');
+    setTextEngine('textInput', ' '); // Use a space so canvas doesn't crash
+  };
+
+  return (
+    <div className="w-full p-6 flex flex-col gap-6">
+      <div className="flex items-center gap-3 text-white/80">
+        <Type size={16} className="text-purple-400" />
+        <span className="text-[10px] font-bold uppercase tracking-widest">{i18n.TEXT_ENGINE || 'AI Reactive Text'}</span>
+      </div>
+      
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
+          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest">
+            {i18n.INPUT_TEXT || 'Drive Visuals via Text'}
+          </label>
+          <input 
+            type="text" 
+            value={localText}
+            onChange={(e) => {
+              setLocalText(e.target.value);
+              setTextEngine('textInput', e.target.value || " ");
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && handleApply()}
+            className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-[13px] font-mono text-white outline-none focus:border-purple-500/50 focus:bg-white/5 transition-all shadow-inner placeholder:text-white/20"
+            placeholder={i18n.TEXT_INPUT_PLACEHOLDER}
+          />
+          <div className="flex gap-2">
+            <button onClick={handleApply} className="flex-1 flex items-center justify-center gap-2 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 text-purple-200 text-[10px] py-2 rounded uppercase font-bold tracking-widest transition-all">
+              <Save size={12} /> {i18n.BTN_SAVE}
+            </button>
+            <button onClick={handleReset} className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 text-[10px] py-2 rounded uppercase font-bold tracking-widest transition-all">
+              <RotateCcw size={12} /> {i18n.BTN_RESET}
+            </button>
+            <button onClick={handleClear} className="flex-1 flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] py-2 rounded uppercase font-bold tracking-widest transition-all">
+              <Trash2 size={12} /> {i18n.BTN_CLEAR}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest">
+            {i18n.ANIMATION_STYLE || 'Typography Style'}
+          </label>
+          <div className="relative">
+            <select 
+              value={textAnimStyle}
+              onChange={(e) => setTextEngine('textAnimStyle', e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-[13px] font-mono text-white outline-none focus:border-purple-500/50 focus:bg-white/5 transition-all appearance-none cursor-pointer"
+            >
+              {styles.map(style => (
+                <option key={style.id} value={style.id}>{style.label}</option>
+              ))}
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/30 text-[10px]">
+              ▼
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <TextSlider 
+            label={i18n.GLOW_AMOUNT || "Glow Intensity"} 
+            value={textGlow} 
+            onChange={(v: number) => setTextEngine('textGlow', v)} 
+            max={5} 
+          />
+          <TextSlider 
+            label={i18n.MOTION_SPEED || "Motion Speed"} 
+            value={textSpeed} 
+            onChange={(v: number) => setTextEngine('textSpeed', v)} 
+            max={3} 
+          />
+          <TextSlider 
+            label={i18n.REACTIVE_INTENSITY || "Reactive Intensity"} 
+            value={textReactive} 
+            onChange={(v: number) => setTextEngine('textReactive', v)} 
+            max={3} 
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
