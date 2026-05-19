@@ -1235,8 +1235,7 @@ function CyberScene() {
   const { speed, baseColor, textInput, textFontSize, textLetterSpacing, textFontWeight } = useStore();
   const matRef = useRef<THREE.ShaderMaterial>(null);
   
-  // Use user text or default to "YOU"
-  const textTexture = useTextTexture(textInput || "YOU", textFontSize, textLetterSpacing, textFontWeight);
+  const textTexture = useTextTexture(textInput, textFontSize, textLetterSpacing, textFontWeight);
   
   useFrame((state) => {
     if(!matRef.current) return;
@@ -1358,7 +1357,7 @@ function useTopologyTexture(text: string, blurIntensity: number) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const displayText = (text || 'YOU').toUpperCase();
+    const displayText = text.toUpperCase();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#000000';
@@ -1388,7 +1387,7 @@ function useTopologyTexture(text: string, blurIntensity: number) {
 function TopologyScene() {
   const { speed, chaos, distortion, textInput, baseColor, secondaryColor, bloomIntensity } = useStore();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const texture = useTopologyTexture(textInput || 'YOU', 0.35 + distortion * 0.25);
+  const texture = useTopologyTexture(textInput, 0.35 + distortion * 0.25);
   const { size } = useThree();
 
   useFrame((state, delta) => {
@@ -1630,7 +1629,7 @@ function DumbarScene() {
     });
   });
 
-  const displayText = (textInput || "YOU").toUpperCase();
+  const displayText = textInput.toUpperCase();
 
   return (
     <group>
@@ -1816,7 +1815,7 @@ function VisualText() {
   const chromeMatRef = useRef<THREE.ShaderMaterial>(null);
   const { currentScene, textInput, textAnimStyle, textGlow, textSpeed, textReactive, baseColor, textFontSize, textLetterSpacing, textFontWeight } = useStore();
 
-  const displayText = (textInput || " ").toUpperCase();
+  const displayText = textInput.toUpperCase();
   const tex = useCleanTextTexture(displayText, false, textFontSize, textLetterSpacing, textFontWeight);
 
   useFrame((state) => {
@@ -1876,7 +1875,7 @@ function VisualText() {
     }
   });
 
-  if(!textInput || textInput === " " || currentScene === 'Dumbar' || currentScene === 'Topology') return null;
+  if(!textInput.trim() || currentScene === 'Dumbar' || currentScene === 'Topology') return null;
 
   if (currentScene === 'Void') {
     return (

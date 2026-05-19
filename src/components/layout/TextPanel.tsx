@@ -40,7 +40,7 @@ export function TextPanel() {
   ];
 
   const handleApply = () => {
-    setTextEngine('textInput', localText || " ");
+    setTextEngine('textInput', localText);
     const lower = localText.toLowerCase();
     
     // Auto sync with visuals occasionally
@@ -57,13 +57,13 @@ export function TextPanel() {
   };
 
   const handleReset = () => {
-    setLocalText('NEONPULSE');
-    setTextEngine('textInput', 'NEONPULSE');
+    setLocalText('');
+    setTextEngine('textInput', '');
   };
 
   const handleClear = () => {
     setLocalText('');
-    setTextEngine('textInput', ' '); // Use a space so canvas doesn't crash
+    setTextEngine('textInput', '');
   };
 
   return (
@@ -83,7 +83,7 @@ export function TextPanel() {
             value={localText}
             onChange={(e) => {
               setLocalText(e.target.value);
-              setTextEngine('textInput', e.target.value || " ");
+              setTextEngine('textInput', e.target.value);
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleApply()}
             className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-[13px] font-mono text-white outline-none focus:border-purple-500/50 focus:bg-white/5 transition-all shadow-inner placeholder:text-white/20"

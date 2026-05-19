@@ -205,7 +205,7 @@ export const useStore = create<VisualizerState>((set) => ({
   setCurrentScene: (scene) => set({ currentScene: scene }),
 
   // Text Engine Defaults
-  textInput: 'NEONPULSE',
+  textInput: '',
   textAnimStyle: 'Cinematic Title',
   textGlow: 1.0,
   textSpeed: 1.0,
