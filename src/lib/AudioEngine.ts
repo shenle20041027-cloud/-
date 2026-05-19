@@ -6,9 +6,6 @@ export class AudioEngine {
   public dataArray: Uint8Array | null = null;
   public timeDataArray: Uint8Array | null = null;
   public source: MediaStreamAudioSourceNode | null = null;
-  private highPass: BiquadFilterNode | null = null;
-  private lowPass: BiquadFilterNode | null = null;
-  private compressor: DynamicsCompressorNode | null = null;
   
   // Expose analyzed data for Three.js to read synchronously without React state overhead
   public current = {
@@ -56,47 +53,17 @@ export class AudioEngine {
     if (this.context) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: false,
-          channelCount: 1,
-          sampleRate: 48000,
-          sampleSize: 16,
-        },
-        video: false,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       
       this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
       await this.context.resume();
       
       this.analyser = this.context.createAnalyser();
-      this.analyser.fftSize = 4096;
-      this.analyser.smoothingTimeConstant = 0.68;
-
-      this.highPass = this.context.createBiquadFilter();
-      this.highPass.type = 'highpass';
-      this.highPass.frequency.value = 55;
-      this.highPass.Q.value = 0.7;
-
-      this.lowPass = this.context.createBiquadFilter();
-      this.lowPass.type = 'lowpass';
-      this.lowPass.frequency.value = 15500;
-      this.lowPass.Q.value = 0.5;
-
-      this.compressor = this.context.createDynamicsCompressor();
-      this.compressor.threshold.value = -42;
-      this.compressor.knee.value = 18;
-      this.compressor.ratio.value = 3.2;
-      this.compressor.attack.value = 0.004;
-      this.compressor.release.value = 0.16;
+      this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.8;
       
       this.source = this.context.createMediaStreamSource(stream);
-      this.source.connect(this.highPass);
-      this.highPass.connect(this.lowPass);
-      this.lowPass.connect(this.compressor);
-      this.compressor.connect(this.analyser);
+      this.source.connect(this.analyser);
       
       this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
       this.timeDataArray = new Uint8Array(this.analyser.fftSize);
@@ -150,7 +117,6 @@ export class AudioEngine {
     let vSum = 0, subSum = 0, bSum = 0, lmSum = 0, mSum = 0, hmSum = 0, tSum = 0;
     let weightedFrequencySum = 0;
     let audibleSum = 0;
-    const nyquist = (this.context?.sampleRate ?? 44100) / 2;
 
     for (let i = 0; i < length; i++) {
       let val = data[i];
@@ -206,7 +172,6 @@ export class AudioEngine {
       highMid: boostBand(highMidRaw, 0.07),
       treble: boostBand(trebleRaw, 0.06),
     };
-
     const positiveBandChange =
       Math.max(0, targetBands.subBass - this.previousBands.subBass) * 0.9 +
       Math.max(0, targetBands.bass - this.previousBands.bass) * 1.1 +
@@ -214,7 +179,6 @@ export class AudioEngine {
       Math.max(0, targetBands.mid - this.previousBands.mid) * 0.75 +
       Math.max(0, targetBands.highMid - this.previousBands.highMid) * 0.7 +
       Math.max(0, targetBands.treble - this.previousBands.treble) * 0.9;
-
     this.previousBands = targetBands;
 
     this.current.volume += (volume - this.current.volume) * 0.22;
@@ -261,9 +225,6 @@ export class AudioEngine {
 
   public destroy() {
     this.source?.disconnect();
-    this.highPass?.disconnect();
-    this.lowPass?.disconnect();
-    this.compressor?.disconnect();
     this.analyser?.disconnect();
     this.context?.close();
     this.context = null;

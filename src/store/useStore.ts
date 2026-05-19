@@ -32,7 +32,6 @@ export interface VisualMemory {
   textGlow: number;
   textSpeed: number;
   textReactive: number;
-  textColor: string;
 }
 
 interface VisualizerState {
@@ -73,11 +72,10 @@ interface VisualizerState {
   textGlow: number;
   textSpeed: number;
   textReactive: number;
-  textColor: string;
   textFontSize: number;
   textFontWeight: number;
   textLetterSpacing: number;
-  setTextEngine: (key: 'textInput' | 'textAnimStyle' | 'textGlow' | 'textSpeed' | 'textReactive' | 'textColor' | 'textFontSize' | 'textFontWeight' | 'textLetterSpacing', value: string | number) => void;
+  setTextEngine: (key: 'textInput' | 'textAnimStyle' | 'textGlow' | 'textSpeed' | 'textReactive' | 'textFontSize' | 'textFontWeight' | 'textLetterSpacing', value: string | number) => void;
 
   // Enhancements
   baseColor: string;
@@ -155,7 +153,6 @@ const createMemorySnapshot = (state: VisualizerState, name: string): VisualMemor
   textGlow: state.textGlow,
   textSpeed: state.textSpeed,
   textReactive: state.textReactive,
-  textColor: state.textColor,
 });
 
 const applyMemoryState = (memory: VisualMemory) => ({
@@ -175,7 +172,6 @@ const applyMemoryState = (memory: VisualMemory) => ({
   textGlow: memory.textGlow,
   textSpeed: memory.textSpeed,
   textReactive: memory.textReactive,
-  textColor: memory.textColor,
 });
 
 const MEMORY_STORAGE_KEY = 'neonpulse.visualMemories';
@@ -243,11 +239,10 @@ export const useStore = create<VisualizerState>((set) => ({
 
   // Text Engine Defaults
   textInput: 'NEONPULSE',
-  textAnimStyle: 'Cinematic',
+  textAnimStyle: 'Cinematic Title',
   textGlow: 1.0,
   textSpeed: 1.0,
   textReactive: 1.0,
-  textColor: '#ffffff',
   textFontSize: 5.0,
   textFontWeight: 900,
   textLetterSpacing: -0.1,
@@ -344,7 +339,6 @@ export const useStore = create<VisualizerState>((set) => ({
     textGlow: state.textGlow ?? current.textGlow,
     textSpeed: state.textSpeed ?? current.textSpeed,
     textReactive: state.textReactive ?? current.textReactive,
-    textColor: state.textColor ?? current.textColor,
     textFontSize: state.textFontSize ?? current.textFontSize,
     textFontWeight: state.textFontWeight ?? current.textFontWeight,
     textLetterSpacing: state.textLetterSpacing ?? current.textLetterSpacing,
@@ -374,16 +368,33 @@ export const useStore = create<VisualizerState>((set) => ({
           set({ currentScene: 'Liquid', baseColor: '#b026ff', secondaryColor: '#00ccff', bloomIntensity: 1.5, textAnimStyle: 'Floating' });
           break;
        case 'Sonic Topology':
-          set({ currentScene: 'Topology', baseColor: '#ffffff', secondaryColor: '#ff3366', bgColor: '#000000', bloomIntensity: 1.8, distortion: 0.18, speed: 1.0, chaos: 0.25, textAnimStyle: 'Cinematic' });
+          set({ currentScene: 'Topology', baseColor: '#ffffff', secondaryColor: '#ff3366', bgColor: '#000000', bloomIntensity: 1.8, distortion: 0.18, speed: 1.0, chaos: 0.25, textAnimStyle: 'Cinematic Title' });
           break;
        case 'Neon Pulse':
           set({ currentScene: 'Pulse', baseColor: '#ff007f', secondaryColor: '#ff003c', glitchActive: true, bloomIntensity: 3, textAnimStyle: 'Beat' });
           break;
        case 'Dark Space':
-          set({ currentScene: 'Void', baseColor: '#ffffff', secondaryColor: '#444444', bloomIntensity: 1, textAnimStyle: 'Massive' });
+          set({
+            currentScene: 'Void',
+            baseColor: '#50f5ff',
+            secondaryColor: '#b8ffe8',
+            accentColor: '#ffffff',
+            bgColor: '#087a92',
+            bloomIntensity: 0,
+            rgbSplitAmount: 0.0002,
+            distortion: 0.02,
+            glitchActive: false,
+            speed: 0.62,
+            chaos: 0.12,
+            saturation: 1.08,
+            brightness: 1.04,
+            contrast: 1.08,
+            exposure: 1.0,
+            textAnimStyle: 'Floating',
+          });
           break;
        case 'Dumbar Base':
-          set({ currentScene: 'Dumbar', baseColor: '#d8d8d8', secondaryColor: '#5f5f5f', bgColor: '#050505', bloomIntensity: 1.15, rgbSplitAmount: 0.0, distortion: 0.03, glitchActive: false, speed: 1.0, chaos: 0.42, contrast: 1.24, saturation: 1.08, brightness: 0.96, musicCameraEnabled: true, audioFxReactive: true });
+          set({ currentScene: 'Dumbar', baseColor: '#ffffff', secondaryColor: '#000000', bgColor: '#050505', textAnimStyle: 'Dumbar', contrast: 1.5, saturation: 1.0 });
           break;
     }
   }

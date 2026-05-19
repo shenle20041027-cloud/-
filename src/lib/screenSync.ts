@@ -40,7 +40,6 @@ const selectSyncState = (
     textGlow: state.textGlow,
     textSpeed: state.textSpeed,
     textReactive: state.textReactive,
-    textColor: state.textColor,
     textFontSize: state.textFontSize,
     textFontWeight: state.textFontWeight,
     textLetterSpacing: state.textLetterSpacing,
