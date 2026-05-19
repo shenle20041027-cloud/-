@@ -7,7 +7,7 @@ export function PresetPanel() {
   const strings = t[language];
   
   const presets = [
-    { id: 'Dumbar Base', name: strings.PRESET_DUMBAR || 'Studio Dumbar', desc: strings.PRESET_DUMBAR_DESC || 'High-contrast kinetic typography', scene: 'Dumbar' },
+    { id: 'Dumbar Base', name: strings.PRESET_DUMBAR || 'Grey Glass Blocks', desc: strings.PRESET_DUMBAR_DESC || 'Refractive tiles distorting text', scene: 'Dumbar' },
     { id: 'Sonic Topology', name: strings.PRESET_TOPOLOGY || 'Sonic Topology', desc: strings.PRESET_TOPOLOGY_DESC || 'Liquified contour type', scene: 'Topology' },
     { id: 'Liquid Dream', name: strings.PRESET_LIQUID || 'Liquid Dream', desc: strings.PRESET_LIQUID_DESC || 'Slow purple fluid', scene: 'Liquid' },
     { id: 'Cyberpunk', name: strings.PRESET_CYBER || 'Cyberpunk', desc: strings.PRESET_CYBER_DESC || 'Neon blue, high glitch', scene: 'Cyber' },
@@ -27,9 +27,10 @@ export function PresetPanel() {
           const isActive = currentScene === preset.scene;
           return (
             <button
+              type="button"
               key={preset.id}
               onClick={() => applyPreset(preset.id)}
-              className={`flex flex-col items-start p-4 rounded-xl transition-all duration-300 ${
+              className={`flex flex-col items-start p-4 rounded-xl transition-all duration-300 pointer-events-auto ${
                 isActive
                   ? 'bg-white text-black shadow-[0_4px_30px_rgba(255,255,255,0.15)] scale-[1.02]'
                   : 'bg-[#151515] hover:bg-[#222222] text-white border border-[#2a2a2a]'

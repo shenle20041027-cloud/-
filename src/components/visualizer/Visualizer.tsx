@@ -1,8 +1,7 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom, Glitch, ChromaticAberration, Vignette } from '@react-three/postprocessing';
-import { Text } from '@react-three/drei';
-import { GlitchMode, BlendFunction } from 'postprocessing';
+import { GlitchMode } from 'postprocessing';
 import * as THREE from 'three';
 import { getAudioDriveSnapshot } from '@/lib/audioDrive';
 import { useStore } from '@/store/useStore';
@@ -770,121 +769,284 @@ function PulseScene() {
   );
 }
 
-const TRAIL_COUNT = 12;
+const glassTextVertex = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
 
-function DumbarScene() {
-  const { textInput } = useStore();
-  const groupRef = useRef<THREE.Group>(null);
-  const bgMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  
-  const historyRef = useRef<any[]>(Array(TRAIL_COUNT).fill(null).map(() => ({ x:0, y:0, scaleX:1, scaleY:1, rotZ:0 })));
-  
-  const targetState = useRef({ 
-    bg: new THREE.Color('#020202'), 
-    fg: new THREE.Color('#ffffff'), 
-    out: new THREE.Color('#333333'),
-    outlineWidth: 0.05
-  });
+const glassTextFragment = `
+  uniform sampler2D uText;
+  uniform float uTime;
+  uniform float uEnergy;
+  uniform float uBeat;
+  uniform float uBass;
+  uniform float uChaos;
+  uniform float uFlowTime;
+  uniform float uPaintTime;
+  uniform vec2 uGlassMotion;
+  varying vec2 vUv;
 
-  useFrame((state) => {
-    if(!groupRef.current) return;
-    const { bass, treble, beat, energy, subBass, highMid } = getReactiveAudio();
-    
-    // Dynamic theme colors inspired by Google Sans Flex / Studio Dumbar
-    if (energy > 0.7 && beat > 0.4) {
-      targetState.current.bg.set('#00ff3c'); // Intense Green
-      targetState.current.fg.set('#000000'); // Black core
-      targetState.current.out.set('#ffffff'); // White outline glow
-      targetState.current.outlineWidth = 0.15;
-    } else if (bass > 0.5 || subBass > 0.5) {
-      targetState.current.bg.set('#050000'); // Deep dark pulse
-      targetState.current.fg.set('#ffffff');
-      targetState.current.out.set('#ff003c'); // Red slit-scan trail
-      targetState.current.outlineWidth = 0.08 + (bass * 0.1);
-    } else {
-      targetState.current.bg.set('#050505');
-      targetState.current.fg.set('#ffffff');
-      targetState.current.out.set('#222222');
-      targetState.current.outlineWidth = 0.05;
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
+
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 5; i++) {
+      v += a * noise(p);
+      p = p * 2.03 + 17.13;
+      a *= 0.5;
     }
-    
-    if (bgMatRef.current) {
-       bgMatRef.current.color.lerp(targetState.current.bg, 0.15);
+    return v;
+  }
+
+  vec4 sampleText(vec2 uv) {
+    vec4 tex = texture2D(uText, uv);
+    return vec4(vec3(tex.r), max(tex.a, tex.r));
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    vec2 motionUv = uv + uGlassMotion * (0.018 + uBass * 0.018 + uBeat * 0.012);
+    vec2 aspectUv = vec2(motionUv.x, motionUv.y * 1.18);
+    vec2 grid = vec2(11.0, 7.0);
+    vec2 tile = floor(aspectUv * grid);
+    vec2 cell = fract(aspectUv * grid);
+    vec2 center = cell - 0.5;
+
+    float id = hash(tile);
+    float id2 = hash(tile + 19.37);
+    float id3 = hash(tile + 51.91);
+    float t = uTime * (0.35 + id * 0.22);
+    vec2 tileMotion = vec2(
+      sin(uTime * (0.7 + id * 0.4) + id2 * 6.283),
+      cos(uTime * (0.62 + id3 * 0.38) - id * 6.283)
+    ) * (uEnergy * 0.055 + uBass * 0.045 + uBeat * 0.035);
+    center += tileMotion;
+    float roundedBox = max(abs(center.x), abs(center.y));
+    float edge = smoothstep(0.49, 0.43, roundedBox);
+    float border = 1.0 - smoothstep(0.42, 0.49, roundedBox);
+
+    float swirl = sin(center.x * (7.0 + id * 10.0) + t + id2 * 6.283)
+                * cos(center.y * (8.0 + id3 * 9.0) - t * 1.3);
+    float localNoise = noise(tile * 1.7 + cell * (2.0 + id * 3.0) + uTime * 0.06);
+    vec2 lens = normalize(center + 0.001) * (0.018 + id * 0.045);
+    lens += vec2(swirl, localNoise - 0.5) * (0.035 + uEnergy * 0.06 + uBass * 0.05);
+    lens += center * (0.05 + id2 * 0.09 + uBeat * 0.06);
+
+    vec2 seamWarp = vec2(
+      sin(tile.y * 1.73 + uTime * 0.2),
+      cos(tile.x * 1.47 - uTime * 0.16)
+    ) * (0.008 + uChaos * 0.018);
+    vec2 refractedUv = uv + (lens + seamWarp) * edge;
+    vec4 textBehind = sampleText(refractedUv);
+    vec4 textGhost = sampleText(uv + vec2(localNoise - 0.5, swirl) * 0.012);
+
+    vec3 bg = vec3(0.018, 0.018, 0.02);
+    vec3 textColor = vec3(0.82, 0.82, 0.8) * textBehind.a;
+    textColor += vec3(0.24) * textGhost.a * (1.0 - edge);
+
+    float grey = mix(0.2, 0.76, id);
+    grey += (localNoise - 0.5) * 0.18;
+    grey += uEnergy * 0.08 + uBeat * 0.08;
+    vec3 glass = vec3(grey);
+
+    float innerShade = smoothstep(0.0, 0.55, length(center));
+    float whiteCore = smoothstep(0.45, 0.02, length(center * vec2(1.05, 0.86)));
+    float highlight = smoothstep(0.055, 0.0, abs(center.x - 0.18 - id * 0.18))
+                    + smoothstep(0.055, 0.0, abs(center.y - 0.28 + id2 * 0.16));
+    highlight *= 0.16 + id3 * 0.26;
+
+    vec3 neonA = 0.5 + 0.5 * cos(vec3(0.0, 2.1, 4.2) + uFlowTime * 1.2 + id * 6.283);
+    vec3 neonB = 0.5 + 0.5 * cos(vec3(3.1, 0.8, 5.4) + uTime * 2.0 - id2 * 6.283 + swirl * 2.5);
+    vec3 neon = mix(neonA, neonB, 0.45 + 0.35 * sin(uTime + id3 * 6.283));
+
+    vec2 paintUv = center * (2.4 + id * 2.2);
+    paintUv += vec2(
+      sin(uPaintTime * (0.42 + id * 0.18) + id2 * 6.283),
+      cos(uPaintTime * (0.34 + id3 * 0.2) - id * 6.283)
+    );
+    float paintA = noise(paintUv + vec2(uPaintTime * 0.18, -uPaintTime * 0.11));
+    float paintB = noise(paintUv * 1.9 + vec2(-uPaintTime * 0.09, uPaintTime * 0.16) + tile * 0.23);
+    float paintMask = smoothstep(0.32, 0.86, paintA * 0.68 + paintB * 0.5);
+    paintMask *= smoothstep(0.52, 0.12, length(center));
+    vec3 paintColor = 0.5 + 0.5 * cos(vec3(0.2, 2.4, 4.7) + paintA * 5.8 + paintB * 2.4 + id * 6.283);
+
+    float edgeGlow = smoothstep(0.24, 0.5, roundedBox) * edge;
+    float gapX = min(cell.x, 1.0 - cell.x);
+    float gapY = min(cell.y, 1.0 - cell.y);
+    float seamDistance = min(gapX, gapY);
+    float seam = smoothstep(0.025, 0.0, seamDistance);
+    float verticalSeam = smoothstep(0.026, 0.0, gapX);
+    float horizontalSeam = smoothstep(0.026, 0.0, gapY);
+    float verticalFlow = smoothstep(0.12, 0.0, abs(fract(cell.y * 3.2 + tile.x * 0.13 - uFlowTime * (0.85 + id * 0.8)) - 0.5));
+    float horizontalFlow = smoothstep(0.12, 0.0, abs(fract(cell.x * 3.2 + tile.y * 0.17 + uFlowTime * (0.72 + id2 * 0.9)) - 0.5));
+    float seamFlow = max(verticalSeam * verticalFlow, horizontalSeam * horizontalFlow);
+    float seamSpark = seam * smoothstep(0.7, 1.0, noise(tile * 2.1 + vec2(uFlowTime * 0.8, -uFlowTime * 0.55)));
+
+    vec3 col = bg;
+    col += textColor * (0.55 + edge * 0.85);
+    col = mix(col, glass, 0.34 * edge);
+    col += paintColor * paintMask * edge * (0.18 + uEnergy * 0.16);
+    col = mix(col, vec3(1.0), whiteCore * 0.42 * edge);
+    col += neon * edgeGlow * 0.12;
+    col += neon * seamFlow * (0.92 + uBeat * 0.75);
+    col += vec3(1.0) * seamFlow * 0.32;
+    col += neon * seamSpark * (0.24 + uEnergy * 0.5);
+    col += vec3(0.18) * innerShade * edge;
+    col += vec3(0.55) * highlight * edge;
+    col -= vec3(0.12) * seam;
+    col += vec3(0.18) * border * edge;
+
+    float vignette = smoothstep(0.95, 0.25, length(uv - 0.5));
+    col *= 0.72 + vignette * 0.5;
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+const foregroundRippleTextFragment = `
+  uniform sampler2D uText;
+  uniform float uTime;
+  uniform float uEnergy;
+  uniform float uBeat;
+  uniform vec3 uTextColor;
+  varying vec2 vUv;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    vec2 center = uv - 0.5;
+    float wave = sin((uv.y * 18.0 + center.x * 4.0) - uTime * (2.4 + uEnergy * 2.2));
+    float ripple = sin(length(center * vec2(1.45, 0.9)) * 42.0 - uTime * (4.0 + uBeat * 3.0));
+    float slice = floor(uv.y * 42.0);
+    float jitter = (hash(vec2(slice, floor(uTime * 16.0))) - 0.5) * 0.018 * (0.35 + uEnergy + uBeat);
+    vec2 scanUv = uv + vec2((wave * 0.012 + ripple * 0.008 + jitter), 0.0);
+
+    vec4 text = texture2D(uText, scanUv);
+    float mask = max(text.r, text.a);
+    float scanLine = smoothstep(0.0, 0.04, abs(fract(uv.y * 18.0 - uTime * (0.9 + uEnergy)) - 0.5));
+    float edgeNoise = hash(floor(uv * vec2(420.0, 210.0)) + floor(uTime * 8.0));
+    float grain = step(0.965 - uEnergy * 0.04, edgeNoise);
+
+    vec3 uvA = vec3(uv.x, uv.y, uv.x);
+    vec3 uvB = vec3(uv.y, uv.x, uv.y);
+    vec3 neonA = 0.5 + 0.5 * cos(vec3(0.0, 2.2, 4.4) + uTime * 1.8 + uvA * vec3(8.0, 5.0, 7.0));
+    vec3 neonB = 0.5 + 0.5 * cos(vec3(3.1, 0.7, 5.2) - uTime * 1.25 + ripple * 2.2 + uvB * vec3(6.0, 9.0, 4.0));
+    vec3 neon = mix(neonA, neonB, 0.45 + 0.35 * wave);
+    neon = mix(uTextColor, neon, 0.62);
+    vec3 hotCore = mix(uTextColor, neon, 0.72);
+    vec3 core = hotCore * mask * (0.9 + uEnergy * 0.24);
+    vec3 glow = neon * mask * (0.42 + uEnergy * 0.55 + uBeat * 0.55);
+    vec3 scan = mix(vec3(1.0), neon, 0.82) * mask * (1.0 - scanLine) * 0.55;
+    vec3 col = core + glow + scan + neon * grain * mask * 0.45;
+    float alpha = clamp(mask * (0.7 + uEnergy * 0.28) + grain * mask * 0.25, 0.0, 1.0);
+
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
+function RandomGlassBlocksScene() {
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const foregroundTextRef = useRef<THREE.ShaderMaterial>(null);
+  const flowTimeRef = useRef(0);
+  const paintTimeRef = useRef(0);
+  const mouseMotionRef = useRef(new THREE.Vector2(0, 0));
+  const { textInput, textColor, textFontSize, textLetterSpacing, textFontWeight, speed, chaos } = useStore();
+  const displayText = (textInput || 'NEONPULSE').toUpperCase();
+  const textTexture = useCleanTextTexture(displayText, false, textFontSize * 1.25, textLetterSpacing, textFontWeight);
+
+  useFrame((state, delta) => {
+    if (!materialRef.current) return;
+    const { energy, beat, bass } = getReactiveAudio();
+    const uniforms = materialRef.current.uniforms;
+    const tempoDrive = 0.8 + energy * 4.2 + bass * 2.8 + beat * 7.5;
+    flowTimeRef.current += delta * tempoDrive * Math.max(0.35, speed);
+    paintTimeRef.current += delta * (0.55 + energy * 0.7 + bass * 0.45) * Math.max(0.35, speed);
+
+    uniforms.uText.value = textTexture;
+    uniforms.uTime.value = state.clock.elapsedTime * speed;
+    uniforms.uFlowTime.value = flowTimeRef.current;
+    uniforms.uPaintTime.value = paintTimeRef.current;
+    uniforms.uEnergy.value += (energy - uniforms.uEnergy.value) * 0.12;
+    uniforms.uBeat.value += (beat - uniforms.uBeat.value) * 0.2;
+    uniforms.uBass.value += (bass - uniforms.uBass.value) * 0.14;
+    uniforms.uChaos.value = chaos;
+    mouseMotionRef.current.lerp(state.pointer, 0.08);
+    const performanceAmount = 0.75 + chaos * 0.35;
+    const mouseAmount = 0.75 + chaos * 0.25;
+    uniforms.uGlassMotion.value.set(
+      mouseMotionRef.current.x * mouseAmount + Math.sin(state.clock.elapsedTime * 0.9 * speed) * (0.22 + bass * 0.5 + beat * 0.35) * performanceAmount,
+      mouseMotionRef.current.y * mouseAmount + Math.cos(state.clock.elapsedTime * 0.72 * speed) * (0.18 + energy * 0.45 + beat * 0.28) * performanceAmount
+    );
+
+    if (foregroundTextRef.current) {
+      foregroundTextRef.current.uniforms.uText.value = textTexture;
+      foregroundTextRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
+      foregroundTextRef.current.uniforms.uEnergy.value += (energy - foregroundTextRef.current.uniforms.uEnergy.value) * 0.14;
+      foregroundTextRef.current.uniforms.uBeat.value += (beat - foregroundTextRef.current.uniforms.uBeat.value) * 0.22;
+      foregroundTextRef.current.uniforms.uTextColor.value.set(textColor);
     }
-    
-    const time = state.clock.elapsedTime;
-    
-    const targetScaleX = 1 + (bass * 2.5) + (energy * 1.5) + (beat * 1.0);
-    const targetScaleY = 1 + (highMid * 1.0) - (subBass * 0.2) + (beat * 0.5);
-    
-    // Kinetic wavy motion
-    const waveDistortionX = Math.sin(time * 5.0) * (energy + bass) * 0.6;
-    const waveDistortionY = Math.cos(time * 3.7) * (energy) * 0.4;
-    const rotZ = Math.sin(time * 2.0) * bass * 0.3;
-    
-    const currentFront = {
-      x: waveDistortionX,
-      y: waveDistortionY,
-      scaleX: targetScaleX,
-      scaleY: targetScaleY,
-      rotZ: rotZ
-    };
-    
-    historyRef.current.unshift(currentFront);
-    historyRef.current.pop();
-    
-    groupRef.current.children.forEach((mesh: any, i: number) => {
-      const hist = historyRef.current[i];
-      if (!hist) return;
-      
-      mesh.position.x += (hist.x - mesh.position.x) * 0.4;
-      mesh.position.y += (hist.y - mesh.position.y) * 0.4;
-      mesh.scale.x += (hist.scaleX - mesh.scale.x) * 0.4;
-      mesh.scale.y += (hist.scaleY - mesh.scale.y) * 0.4;
-      mesh.rotation.z += (hist.rotZ - mesh.rotation.z) * 0.4;
-      
-      mesh.position.z = -i * 0.2; 
-      
-      if (!mesh.color) mesh.color = new THREE.Color();
-      if (!mesh.outlineColor) mesh.outlineColor = new THREE.Color();
-
-      if (i === 0) {
-        mesh.color.lerp(targetState.current.fg, 0.2);
-        mesh.outlineWidth = 0;
-      } else {
-        mesh.color.lerp(targetState.current.bg, 0.2);
-        mesh.outlineColor.lerp(targetState.current.out, 0.2);
-        mesh.outlineWidth = targetState.current.outlineWidth;
-        mesh.fillOpacity = 1.0;
-      }
-
-      if (mesh.sync) mesh.sync();
-    });
   });
-
-  const displayText = (textInput || "YOU").toUpperCase();
 
   return (
     <group>
-      <mesh position={[0,0,-20]}>
-        <planeGeometry args={[100, 100]} />
-        <meshBasicMaterial ref={bgMatRef} color="#000" />
+      <mesh position={[0, 0, -1]}>
+        <planeGeometry args={[24, 13]} />
+        <shaderMaterial
+          ref={materialRef}
+          vertexShader={glassTextVertex}
+          fragmentShader={glassTextFragment}
+          uniforms={{
+            uText: { value: textTexture },
+            uTime: { value: 0 },
+            uEnergy: { value: 0 },
+            uBeat: { value: 0 },
+            uBass: { value: 0 },
+            uChaos: { value: chaos },
+            uFlowTime: { value: 0 },
+            uPaintTime: { value: 0 },
+            uGlassMotion: { value: new THREE.Vector2(0, 0) },
+          }}
+          depthWrite={false}
+        />
       </mesh>
-      
-      <group ref={groupRef} position={[0, 0, 0]}>
-        {new Array(TRAIL_COUNT).fill(0).map((_, i) => (
-           <Text
-             key={i}
-             font="https://fonts.gstatic.com/ea/notosanssc/v1/NotoSansSC-Bold.otf"
-             fontSize={textFontSize}
-             letterSpacing={textLetterSpacing}
-             anchorX="center"
-             anchorY="middle"
-           >
-             {displayText}
-           </Text>
-        ))}
-      </group>
+      <mesh position={[0, 0, 1.2]}>
+        <planeGeometry args={[18, 9]} />
+        <shaderMaterial
+          ref={foregroundTextRef}
+          vertexShader={glassTextVertex}
+          fragmentShader={foregroundRippleTextFragment}
+          uniforms={{
+            uText: { value: textTexture },
+            uTime: { value: 0 },
+            uEnergy: { value: 0 },
+            uBeat: { value: 0 },
+            uTextColor: { value: new THREE.Color(textColor) },
+          }}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
     </group>
   );
 }
@@ -898,7 +1060,7 @@ function SceneRouter() {
     case 'Liquid': return <LiquidScene />;
     case 'Pulse': return <PulseScene />;
     case 'Void': return <VoidScene />;
-    case 'Dumbar': return <DumbarScene />;
+    case 'Dumbar': return <RandomGlassBlocksScene />;
     default: return <VoidScene />;
   }
 }
@@ -960,7 +1122,7 @@ function useCleanTextTexture(text: string, isDumbar: boolean = false, fontSize: 
 // === CINEMATIC TYPOGRAPHY ===
 function VisualText() {
   const textRef = useRef<THREE.Mesh>(null);
-  const { currentScene, textInput, textAnimStyle, textGlow, textSpeed, textReactive, baseColor, textFontSize, textLetterSpacing, textFontWeight } = useStore();
+  const { currentScene, textInput, textAnimStyle, textGlow, textSpeed, textReactive, textColor, textFontSize, textLetterSpacing, textFontWeight } = useStore();
 
   const displayText = (textInput || " ").toUpperCase();
   const tex = useCleanTextTexture(displayText, false, textFontSize, textLetterSpacing, textFontWeight);
@@ -1002,7 +1164,7 @@ function VisualText() {
     // Adjust material properties dynamically if needed
     const mat = textRef.current.material as THREE.MeshBasicMaterial;
     if(mat && mat.color) {
-       mat.color.set(baseColor);
+       mat.color.set(textColor);
        mat.color.multiplyScalar(textGlow + beat * 2.0);
     }
   });

@@ -22,8 +22,13 @@ const TextSlider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: a
 );
 
 export function TextPanel() {
-  const { language, textInput, textAnimStyle, textGlow, textSpeed, textReactive, textFontSize, textFontWeight, textLetterSpacing, setTextEngine, applyPreset } = useStore();
-  const i18n = t[language];
+  const { language, textInput, textAnimStyle, textGlow, textSpeed, textReactive, textColor, textFontSize, textFontWeight, textLetterSpacing, setTextEngine, applyPreset } = useStore();
+  const i18n = t[language] as (typeof t)[typeof language] & {
+    FONT_SIZE?: string;
+    FONT_WEIGHT?: string;
+    LETTER_SPACING?: string;
+    TEXT_COLOR?: string;
+  };
   const [localText, setLocalText] = useState(textInput);
 
   useEffect(() => {
@@ -119,6 +124,27 @@ export function TextPanel() {
             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/30 text-[10px]">
               ▼
             </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest">
+            {i18n.TEXT_COLOR || 'Text Color'}
+          </label>
+          <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/50 px-4 py-3">
+            <input
+              type="color"
+              value={textColor}
+              onChange={(e) => setTextEngine('textColor', e.target.value)}
+              className="h-8 w-10 cursor-pointer rounded border border-white/20 bg-transparent p-0"
+              aria-label={i18n.TEXT_COLOR || 'Text Color'}
+            />
+            <input
+              type="text"
+              value={textColor}
+              onChange={(e) => setTextEngine('textColor', e.target.value)}
+              className="min-w-0 flex-1 bg-transparent font-mono text-[12px] uppercase text-white outline-none"
+            />
           </div>
         </div>
 
