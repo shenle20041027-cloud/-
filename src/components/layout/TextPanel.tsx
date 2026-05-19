@@ -62,8 +62,13 @@ export function TextPanel() {
   };
 
   const handleReset = () => {
-    setLocalText('NEONPULSE');
-    setTextEngine('textInput', 'NEONPULSE');
+    setLocalText('GAFA');
+    setTextEngine('textInput', 'GAFA');
+    setTextEngine('textAnimStyle', 'Glitch');
+    setTextEngine('textFontSize', 4.6);
+    setTextEngine('textFontWeight', 900);
+    setTextEngine('textLetterSpacing', 0.02);
+    setTextEngine('textColor', '#ffffff');
   };
 
   const handleClear = () => {

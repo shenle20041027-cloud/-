@@ -209,15 +209,15 @@ export const useStore = create<VisualizerState>((set) => ({
   setCurrentScene: (scene) => set({ currentScene: scene }),
 
   // Text Engine Defaults
-  textInput: 'NEONPULSE',
-  textAnimStyle: 'Cinematic',
+  textInput: 'GAFA',
+  textAnimStyle: 'Glitch',
   textGlow: 1.0,
   textSpeed: 1.0,
   textReactive: 1.0,
   textColor: '#ffffff',
-  textFontSize: 5.0,
+  textFontSize: 4.6,
   textFontWeight: 900,
-  textLetterSpacing: -0.1,
+  textLetterSpacing: 0.02,
   setTextEngine: (key, value) => set({ [key]: value }),
 
   baseColor: '#00f3ff',
@@ -277,7 +277,25 @@ export const useStore = create<VisualizerState>((set) => ({
           set({ currentScene: 'Topology', baseColor: '#ffffff', secondaryColor: '#ff3366', bgColor: '#000000', bloomIntensity: 1.8, distortion: 0.18, speed: 1.0, chaos: 0.25, textAnimStyle: 'Cinematic' });
           break;
        case 'Neon Pulse':
-          set({ currentScene: 'Pulse', baseColor: '#ff007f', secondaryColor: '#ff003c', glitchActive: true, bloomIntensity: 3, textAnimStyle: 'Beat' });
+          set({
+            currentScene: 'Pulse',
+            baseColor: '#ff1600',
+            secondaryColor: '#ff7a18',
+            accentColor: '#ffffff',
+            bgColor: '#020000',
+            glitchActive: true,
+            bloomIntensity: 2.45,
+            rgbSplitAmount: 0.012,
+            distortion: 0.42,
+            speed: 1.35,
+            chaos: 0.78,
+            textInput: 'GAFA',
+            textColor: '#ffffff',
+            textFontSize: 4.6,
+            textFontWeight: 900,
+            textLetterSpacing: 0.02,
+            textAnimStyle: 'Glitch'
+          });
           break;
        case 'Dark Space':
           set({ currentScene: 'Void', baseColor: '#ffffff', secondaryColor: '#444444', bloomIntensity: 1, textAnimStyle: 'Massive' });
