@@ -1259,8 +1259,7 @@ function CyberScene() {
   const { speed, baseColor, textInput, textFontSize, textLetterSpacing, textFontWeight } = useStore();
   const matRef = useRef<THREE.ShaderMaterial>(null);
   
-  // Use user text or default to "YOU"
-  const textTexture = useTextTexture(textInput || "YOU", textFontSize, textLetterSpacing, textFontWeight);
+  const textTexture = useTextTexture(textInput, textFontSize, textLetterSpacing, textFontWeight);
   
   useFrame((state) => {
     if(!matRef.current) return;
@@ -1382,7 +1381,7 @@ function useTopologyTexture(text: string, blurIntensity: number) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const displayText = (text || 'YOU').toUpperCase();
+    const displayText = text.toUpperCase();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#000000';
@@ -1412,7 +1411,7 @@ function useTopologyTexture(text: string, blurIntensity: number) {
 function TopologyScene() {
   const { speed, chaos, distortion, textInput, baseColor, secondaryColor, bloomIntensity } = useStore();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const texture = useTopologyTexture(textInput || 'YOU', 0.35 + distortion * 0.25);
+  const texture = useTopologyTexture(textInput, 0.35 + distortion * 0.25);
   const { size } = useThree();
 
   useFrame((state, delta) => {
@@ -1654,7 +1653,7 @@ function DumbarScene() {
     });
   });
 
-  const displayText = (textInput || "YOU").toUpperCase();
+  const displayText = textInput.toUpperCase();
 
   return (
     <group>
@@ -1842,7 +1841,7 @@ function VisualText({ sceneOverride }: { sceneOverride?: string }) {
   const { currentScene, textInput, textAnimStyle, textGlow, textSpeed, textReactive, baseColor, textFontSize, textLetterSpacing, textFontWeight } = useStore();
   const scene = sceneOverride || currentScene;
 
-  const displayText = (textInput || " ").toUpperCase();
+  const displayText = textInput.toUpperCase();
   const tex = useCleanTextTexture(displayText, false, textFontSize, textLetterSpacing, textFontWeight);
 
   useFrame((state) => {
@@ -1851,7 +1850,7 @@ function VisualText({ sceneOverride }: { sceneOverride?: string }) {
     const t = state.clock.elapsedTime * textSpeed;
     const react = bass * textReactive + (beat * 0.5 * textReactive);
 
-    if (currentScene === 'Void') {
+    if (scene === 'Void') {
       textRef.current.scale.set(1.05 + react * 0.08, 1.0 + react * 0.04, 1);
       textRef.current.position.x = Math.sin(t * 0.72) * 0.34 + Math.sin(t * 1.37) * 0.11;
       textRef.current.position.y = Math.cos(t * 0.57) * 0.22 + Math.sin(t * 1.11) * 0.08;
@@ -1902,9 +1901,9 @@ function VisualText({ sceneOverride }: { sceneOverride?: string }) {
     }
   });
 
-  if(!textInput || textInput === " " || scene === 'Dumbar' || scene === 'Topology') return null;
+  if(!textInput.trim() || scene === 'Dumbar' || scene === 'Topology') return null;
 
-  if (currentScene === 'Void') {
+  if (scene === 'Void') {
     return (
       <mesh ref={textRef} position={[0, 0, 1.2]}>
         <planeGeometry args={[20.5, 8.2]} />
