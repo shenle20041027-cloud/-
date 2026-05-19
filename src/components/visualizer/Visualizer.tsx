@@ -23,7 +23,99 @@ function getReactiveAudio() {
     treble: audio.treble * motionAmount,
     energy: audio.energy * motionAmount,
     beat: audio.beat * beatAmount,
+    spectralCentroid: audio.spectralCentroid * motionAmount,
+    spectralFlux: audio.spectralFlux * motionAmount,
+    transient: audio.transient * motionAmount,
+    dynamicRange: audio.dynamicRange * motionAmount,
   };
+}
+
+const audioMutationFragment = `
+  uniform float uTime;
+  uniform float uEnergy;
+  uniform float uFlux;
+  uniform float uTransient;
+  uniform float uCentroid;
+  uniform float uDynamicRange;
+  uniform vec3 uBaseColor;
+  uniform vec3 uSecondaryColor;
+  uniform vec3 uAccentColor;
+  varying vec2 vUv;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float sweepSpeed = 0.18 + uCentroid * 1.45 + uFlux * 0.75;
+    float grainScale = 4.0 + uCentroid * 18.0 + uDynamicRange * 8.0;
+    float field = noise(p * grainScale + vec2(uTime * sweepSpeed, -uTime * (0.12 + uFlux)));
+    float ribbons = sin((p.x * (5.0 + uCentroid * 16.0) + p.y * (2.0 + uDynamicRange * 8.0)) + uTime * (1.5 + uFlux * 4.5));
+    float mask = smoothstep(0.44, 0.94, field + ribbons * (0.18 + uTransient * 0.28));
+    float radial = smoothstep(1.35, 0.15, length(p + vec2(sin(uTime * 0.3) * 0.18, cos(uTime * 0.24) * 0.12)));
+    float intensity = mask * radial * (0.05 + uEnergy * 0.22 + uFlux * 0.34 + uTransient * 0.3);
+    vec3 tone = mix(uBaseColor, uSecondaryColor, clamp(uCentroid * 1.25, 0.0, 1.0));
+    tone = mix(tone, uAccentColor, clamp(uTransient * 0.7, 0.0, 0.55));
+    gl_FragColor = vec4(tone * intensity, clamp(intensity, 0.0, 0.72));
+  }
+`;
+
+function AudioMutationOverlay() {
+  const matRef = useRef<THREE.ShaderMaterial>(null);
+  const { baseColor, secondaryColor, accentColor } = useStore();
+
+  useFrame((state) => {
+    if (!matRef.current) return;
+    const { energy, spectralFlux, transient, spectralCentroid, dynamicRange } = getReactiveAudio();
+    const uniforms = matRef.current.uniforms;
+    uniforms.uTime.value = state.clock.elapsedTime;
+    uniforms.uEnergy.value += (energy - uniforms.uEnergy.value) * 0.12;
+    uniforms.uFlux.value += (spectralFlux - uniforms.uFlux.value) * 0.25;
+    uniforms.uTransient.value += (transient - uniforms.uTransient.value) * 0.34;
+    uniforms.uCentroid.value += (spectralCentroid - uniforms.uCentroid.value) * 0.16;
+    uniforms.uDynamicRange.value += (dynamicRange - uniforms.uDynamicRange.value) * 0.14;
+    uniforms.uBaseColor.value.set(baseColor);
+    uniforms.uSecondaryColor.value.set(secondaryColor);
+    uniforms.uAccentColor.value.set(accentColor);
+  });
+
+  return (
+    <mesh position={[0, 0, 2.8]} renderOrder={50}>
+      <planeGeometry args={[22, 12]} />
+      <shaderMaterial
+        ref={matRef}
+        vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+        fragmentShader={audioMutationFragment}
+        uniforms={{
+          uTime: { value: 0 },
+          uEnergy: { value: 0 },
+          uFlux: { value: 0 },
+          uTransient: { value: 0 },
+          uCentroid: { value: 0 },
+          uDynamicRange: { value: 0 },
+          uBaseColor: { value: new THREE.Color(baseColor) },
+          uSecondaryColor: { value: new THREE.Color(secondaryColor) },
+          uAccentColor: { value: new THREE.Color(accentColor) },
+        }}
+        transparent
+        depthTest={false}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
+  );
 }
 
 // === WEBCAM HOOK ===
@@ -624,17 +716,17 @@ function TopologyScene() {
 
   useFrame((state, delta) => {
     if (!materialRef.current) return;
-    const { energy, beat, bass, treble } = getReactiveAudio();
-    const audio = Math.min(1.35, energy * 0.85 + beat * 0.65 + bass * 0.35 + treble * 0.2);
+    const { energy, beat, bass, treble, spectralFlux, spectralCentroid, transient } = getReactiveAudio();
+    const audio = Math.min(1.55, energy * 0.78 + beat * 0.45 + bass * 0.32 + treble * 0.2 + spectralFlux * 0.45 + transient * 0.28);
     const uniforms = materialRef.current.uniforms;
     uniforms.uTime.value += delta;
     uniforms.uTexture.value = texture;
     uniforms.uAudio.value += (audio - uniforms.uAudio.value) * 0.12;
-    uniforms.uThickness.value = 0.1 + Math.min(0.28, bloomIntensity * 0.025 + beat * 0.08);
-    uniforms.uAmplitude.value = 0.08 + distortion * 0.28 + chaos * 0.16;
-    uniforms.uSpeed.value = 0.65 + speed * 0.75;
-    uniforms.uLiquify.value = 0.42 + chaos * 0.55 + bass * 0.2;
-    uniforms.uFrequency.value = 18 + chaos * 18 + treble * 8;
+    uniforms.uThickness.value = 0.1 + Math.min(0.34, bloomIntensity * 0.025 + beat * 0.06 + transient * 0.08);
+    uniforms.uAmplitude.value = 0.08 + distortion * 0.28 + chaos * 0.16 + spectralFlux * 0.08;
+    uniforms.uSpeed.value = 0.65 + speed * 0.75 + transient * 0.45;
+    uniforms.uLiquify.value = 0.42 + chaos * 0.55 + bass * 0.2 + spectralFlux * 0.28;
+    uniforms.uFrequency.value = 18 + chaos * 18 + treble * 8 + spectralCentroid * 12;
     uniforms.uAspect.value = size.width / Math.max(size.height, 1);
     uniforms.uColor1.value.set(baseColor);
     uniforms.uColor2.value.set(secondaryColor);
@@ -1129,26 +1221,26 @@ function VisualText() {
 
   useFrame((state) => {
     if(!textRef.current) return;
-    const { bass, treble, beat } = getReactiveAudio();
+    const { bass, treble, beat, spectralFlux, transient, spectralCentroid } = getReactiveAudio();
     const t = state.clock.elapsedTime * textSpeed;
-    const react = bass * textReactive + (beat * 0.5 * textReactive);
+    const react = (bass + spectralFlux * 0.65 + transient * 0.35) * textReactive + (beat * 0.38 * textReactive);
 
     if(textAnimStyle === 'Cinematic') {
       textRef.current.scale.setScalar(1 + react * 0.2);
-      textRef.current.position.y = Math.sin(t) * 0.2;
+      textRef.current.position.y = Math.sin(t * (1 + spectralCentroid * 0.9)) * (0.2 + treble * 0.12);
       textRef.current.rotation.set(0,0,0);
     } else if (textAnimStyle === 'Glitch') {
       textRef.current.scale.setScalar(1 + react);
       textRef.current.rotation.set(0,0,0);
       if(Math.random() > 0.8 || beat > 0.5) {
-        textRef.current.position.x = (Math.random()-0.5)*0.5 * react;
+        textRef.current.position.x = (Math.random()-0.5) * (0.5 + spectralFlux) * react;
       } else {
         textRef.current.position.x = 0;
       }
     } else if (textAnimStyle === 'Beat') {
       textRef.current.scale.setScalar(1.5 + (react * 1.5) + (beat * 1.0));
       textRef.current.position.set(0, 0, 1 + bass * 2.0);
-      textRef.current.rotation.z = Math.sin(t * 10.0) * 0.05 * beat;
+      textRef.current.rotation.z = Math.sin(t * (10.0 + spectralCentroid * 10.0)) * 0.05 * (beat + transient);
     } else if (textAnimStyle === 'Floating') {
       textRef.current.rotation.z = Math.sin(t * 0.5) * 0.1;
       textRef.current.position.y = Math.sin(t) * 0.5;
@@ -1165,7 +1257,7 @@ function VisualText() {
     const mat = textRef.current.material as THREE.MeshBasicMaterial;
     if(mat && mat.color) {
        mat.color.set(textColor);
-       mat.color.multiplyScalar(textGlow + beat * 2.0);
+       mat.color.multiplyScalar(textGlow + beat * 2.0 + transient * 1.1 + spectralFlux * 0.8);
     }
   });
 
@@ -1194,19 +1286,19 @@ function PostProcessing() {
   const [dynamicGlitch, setDynamicGlitch] = useState(false);
 
   useFrame(() => {
-    const { energy, beat, bass, subBass, mid, treble } = getAudioDriveSnapshot(audioDriveMode);
+    const { energy, beat, bass, subBass, mid, treble, highMid, spectralFlux, transient, spectralCentroid, dynamicRange } = getAudioDriveSnapshot(audioDriveMode);
     const morph = autoVjEnabled && audioFxReactive ? 1 : 0;
     
-    const targetBloom = bloomIntensity + (energy * 1.05 + beat * 2.4 + treble * 0.5) * morph;
+    const targetBloom = bloomIntensity + (energy * 0.95 + beat * 1.7 + treble * 0.45 + spectralFlux * 1.1 + transient * 0.85) * morph;
     setDynamicBloom(prev => prev + (targetBloom - prev) * 0.1); 
 
-    const targetSplit = rgbSplitAmount + (bass * 0.016 + subBass * 0.014 + beat * 0.028 + distortion * 0.006) * morph;
+    const targetSplit = rgbSplitAmount + (bass * 0.014 + subBass * 0.012 + beat * 0.02 + highMid * 0.012 + spectralCentroid * 0.014 + spectralFlux * 0.018 + distortion * 0.006) * morph;
     setDynamicSplit(prev => prev + (targetSplit - prev) * 0.2);
 
-    const targetDistortion = distortion + (subBass * 0.52 + bass * 0.28 + mid * 0.16 + beat * 0.38) * morph;
+    const targetDistortion = distortion + (subBass * 0.42 + bass * 0.24 + mid * 0.16 + dynamicRange * 0.34 + spectralFlux * 0.42 + beat * 0.24) * morph;
     setDynamicDistortion(prev => prev + (targetDistortion - prev) * 0.16);
 
-    setDynamicGlitch(glitchActive || (morph > 0 && (beat > 0.65 || treble > 0.58 || bass > 0.72)));
+    setDynamicGlitch(glitchActive || (morph > 0 && (beat > 0.65 || treble > 0.58 || bass > 0.72 || transient > 0.68 || spectralFlux > 0.64)));
   });
 
   return (
@@ -1239,12 +1331,12 @@ function MusicCameraRig() {
   const targetPosition = useMemo(() => new THREE.Vector3(0, 0, 5), []);
 
   useFrame((state) => {
-    const { bass, subBass, mid, treble, beat, energy } = getAudioDriveSnapshot(audioDriveMode);
+    const { bass, subBass, mid, treble, beat, energy, spectralFlux, spectralCentroid, transient, dynamicRange } = getAudioDriveSnapshot(audioDriveMode);
     const amount = musicCameraEnabled ? 0.8 : 0;
     const time = state.clock.elapsedTime * (0.2 + speed * 0.18);
-    const orbit = time + bass * 1.8 * amount + treble * 0.8 * amount;
-    const radius = 5 + subBass * 2.8 * amount + beat * 0.9 * amount;
-    const lift = Math.sin(time * 1.7) * (0.35 + mid * 1.2) * amount;
+    const orbit = time + bass * 1.55 * amount + treble * 0.75 * amount + spectralCentroid * 0.8 * amount;
+    const radius = 5 + subBass * 2.2 * amount + beat * 0.65 * amount + dynamicRange * 0.85 * amount;
+    const lift = Math.sin(time * (1.7 + spectralFlux * 1.2)) * (0.35 + mid * 1.05 + transient * 0.45) * amount;
 
     targetPosition.set(
       Math.sin(orbit) * (0.35 + chaos * 0.22) * amount,
@@ -1254,14 +1346,14 @@ function MusicCameraRig() {
 
     camera.position.lerp(targetPosition, 0.055);
     lookTarget.set(
-      Math.sin(time * 1.3) * treble * 0.55 * amount,
-      Math.cos(time * 1.1) * mid * 0.45 * amount,
-      beat * 0.18 * amount
+      Math.sin(time * 1.3) * (treble + spectralFlux) * 0.45 * amount,
+      Math.cos(time * 1.1) * (mid + spectralCentroid) * 0.38 * amount,
+      (beat * 0.12 + transient * 0.2) * amount
     );
     camera.lookAt(lookTarget);
 
     if (camera instanceof THREE.PerspectiveCamera) {
-      const nextFov = 60 + energy * 8 * amount + beat * 4 * amount;
+      const nextFov = 60 + energy * 6 * amount + beat * 3 * amount + spectralFlux * 4.5 * amount;
       camera.fov += (nextFov - camera.fov) * 0.08;
       camera.updateProjectionMatrix();
     }
@@ -1285,9 +1377,9 @@ function AudioMorphTone() {
       return;
     }
 
-    const { bass, treble, energy, beat } = getAudioDriveSnapshot(audioDriveMode);
-    pulseColor.set(treble > bass ? secondaryColor : baseColor);
-    targetColor.copy(quietColor).lerp(pulseColor, Math.min(0.45, energy * 0.28 + beat * 0.16));
+    const { bass, treble, energy, beat, spectralCentroid, spectralFlux, transient } = getAudioDriveSnapshot(audioDriveMode);
+    pulseColor.set(treble + spectralCentroid > bass ? secondaryColor : baseColor);
+    targetColor.copy(quietColor).lerp(pulseColor, Math.min(0.52, energy * 0.24 + beat * 0.1 + spectralFlux * 0.2 + transient * 0.16));
     scene.background = targetColor.clone();
   });
 
@@ -1306,11 +1398,11 @@ export function Visualizer() {
 
     let frame = 0;
     const updateFilter = () => {
-      const { bass, treble, energy, beat } = getAudioDriveSnapshot(audioDriveMode);
+      const { bass, treble, energy, beat, spectralFlux, transient, spectralCentroid } = getAudioDriveSnapshot(audioDriveMode);
       setAudioFilter({
-        contrast: energy * 0.12 + beat * 0.08,
-        brightness: bass * 0.08 + beat * 0.08,
-        saturation: treble * 0.35 + energy * 0.12,
+        contrast: energy * 0.1 + beat * 0.05 + spectralFlux * 0.12,
+        brightness: bass * 0.06 + beat * 0.05 + transient * 0.07,
+        saturation: treble * 0.28 + energy * 0.1 + spectralCentroid * 0.18,
       });
       frame = requestAnimationFrame(updateFilter);
     };
@@ -1331,6 +1423,7 @@ export function Visualizer() {
         <AudioMorphTone />
         <MusicCameraRig />
         <SceneRouter />
+        <AudioMutationOverlay />
         <VisualText />
         <PostProcessing />
       </Canvas>

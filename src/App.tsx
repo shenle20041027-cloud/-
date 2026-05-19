@@ -176,7 +176,9 @@ export default function App() {
 
             {/* CENTER CANVAS & TIMELINE */}
             <div className="flex-1 bg-black relative group flex flex-col min-w-0">
-               {!isFullscreen && <MusicProjectBar />}
+               <div className={isFullscreen ? 'hidden' : 'contents'}>
+                 <MusicProjectBar />
+               </div>
                <div className="flex-1 relative min-h-0">
                  <Visualizer />
                  
