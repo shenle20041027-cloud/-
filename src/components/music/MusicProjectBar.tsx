@@ -237,6 +237,7 @@ export function MusicProjectBar() {
   const uploadAnalyserRef = useRef<AnalyserNode | null>(null);
   const uploadFrequencyRef = useRef<Uint8Array | null>(null);
   const uploadLastEnergyRef = useRef(0);
+  const uploadLastBandsRef = useRef({ subBass: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0 });
   const linkedAudioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const uploadAnalysisTimerRef = useRef<number | null>(null);
@@ -282,6 +283,7 @@ export function MusicProjectBar() {
       uploadFrequencyRef.current = null;
     }
     uploadLastEnergyRef.current = 0;
+    uploadLastBandsRef.current = { subBass: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0 };
   };
 
   const analyzeUploadedFrame = () => {
@@ -315,6 +317,27 @@ export function MusicProjectBar() {
     const energy = Math.min(1, volume * 0.75 + Math.max(bass, mid, treble) * 0.25);
     const beatDelta = Math.max(0, energy - uploadLastEnergyRef.current);
     const beat = bass > 0.28 && beatDelta > 0.08 ? Math.min(1.25, bass * 0.7 + beatDelta * 4) : 0;
+    const lastBands = uploadLastBandsRef.current;
+    const spectralFlux = Math.min(1,
+      Math.max(0, subBass - lastBands.subBass) * 0.8 +
+      Math.max(0, bass - lastBands.bass) +
+      Math.max(0, lowMid - lastBands.lowMid) * 0.7 +
+      Math.max(0, mid - lastBands.mid) * 0.65 +
+      Math.max(0, highMid - lastBands.highMid) * 0.7 +
+      Math.max(0, treble - lastBands.treble) * 0.9
+    );
+    uploadLastBandsRef.current = { subBass, bass, lowMid, mid, highMid, treble };
+
+    let weightedFrequencySum = 0;
+    let audibleSum = 0;
+    for (let i = 0; i < data.length; i++) {
+      const magnitude = data[i] / 255;
+      weightedFrequencySum += magnitude * (i / Math.max(1, data.length - 1));
+      audibleSum += magnitude;
+    }
+    const spectralCentroid = audibleSum > 0 ? weightedFrequencySum / audibleSum : 0;
+    const dynamicRange = Math.min(1, Math.abs((subBass + bass) - (highMid + treble)) * 0.42 + Math.max(bass, mid, treble) * 0.18);
+    const transient = Math.min(1.25, spectralFlux * 0.9 + beatDelta * 2.2);
     uploadLastEnergyRef.current = uploadLastEnergyRef.current * 0.82 + energy * 0.18;
 
     setMusicProjectSnapshot({
@@ -327,6 +350,10 @@ export function MusicProjectBar() {
       treble,
       energy,
       beat,
+      spectralCentroid,
+      spectralFlux,
+      transient,
+      dynamicRange,
     });
   };
 
@@ -378,6 +405,7 @@ export function MusicProjectBar() {
       const mid = Math.pow(Math.max(0, Math.sin(time * 5.4 + 0.7)), 2);
       const high = Math.pow(Math.max(0, Math.sin(time * 9.2 + 1.4)), 2.1);
       const beat = low > 0.82 ? 0.95 : 0;
+      const spectralFlux = Math.max(0.08, Math.max(low, mid, high) * 0.5);
       setMusicProjectSnapshot({
         volume: 0.26 + low * 0.3 + mid * 0.2 + high * 0.12,
         subBass: low * 0.9,
@@ -388,6 +416,10 @@ export function MusicProjectBar() {
         treble: high,
         energy: 0.22 + low * 0.35 + mid * 0.25 + high * 0.18,
         beat,
+        spectralCentroid: 0.18 + mid * 0.28 + high * 0.46,
+        spectralFlux,
+        transient: beat > 0 ? 0.85 : spectralFlux * 0.42,
+        dynamicRange: Math.min(1, Math.abs(low - high) * 0.5 + 0.25),
       });
     }, 48);
   };
@@ -453,6 +485,10 @@ export function MusicProjectBar() {
       treble: 0,
       energy: 0.08,
       beat: 0,
+      spectralCentroid: 0.28,
+      spectralFlux: 0,
+      transient: 0,
+      dynamicRange: 0.2,
     };
 
     layers.forEach((layer) => {
@@ -467,6 +503,9 @@ export function MusicProjectBar() {
         nextSnapshot.bass = 0.9;
         nextSnapshot.energy = 0.75;
         nextSnapshot.beat = 1.1;
+        nextSnapshot.spectralFlux = Math.max(nextSnapshot.spectralFlux, 0.82);
+        nextSnapshot.transient = Math.max(nextSnapshot.transient, 1);
+        nextSnapshot.dynamicRange = Math.max(nextSnapshot.dynamicRange, 0.7);
       } else if (token === 'S') {
         playSnare(ctx, master);
         nextSnapshot.volume = Math.max(nextSnapshot.volume, 0.46);
@@ -474,12 +513,18 @@ export function MusicProjectBar() {
         nextSnapshot.highMid = Math.max(nextSnapshot.highMid, 0.45);
         nextSnapshot.energy = Math.max(nextSnapshot.energy, 0.44);
         nextSnapshot.beat = Math.max(nextSnapshot.beat, 0.55);
+        nextSnapshot.spectralCentroid = Math.max(nextSnapshot.spectralCentroid, 0.52);
+        nextSnapshot.spectralFlux = Math.max(nextSnapshot.spectralFlux, 0.58);
+        nextSnapshot.transient = Math.max(nextSnapshot.transient, 0.68);
       } else if (token === 'H') {
         playHat(ctx, master);
         nextSnapshot.volume = Math.max(nextSnapshot.volume, 0.32);
         nextSnapshot.highMid = 0.55;
         nextSnapshot.treble = 0.9;
         nextSnapshot.energy = Math.max(nextSnapshot.energy, 0.28);
+        nextSnapshot.spectralCentroid = Math.max(nextSnapshot.spectralCentroid, 0.82);
+        nextSnapshot.spectralFlux = Math.max(nextSnapshot.spectralFlux, 0.52);
+        nextSnapshot.transient = Math.max(nextSnapshot.transient, 0.42);
       } else if (token === 'X' || token === 'Y') {
         playGlitch(ctx, master);
         nextSnapshot.volume = Math.max(nextSnapshot.volume, 0.42);
@@ -487,6 +532,9 @@ export function MusicProjectBar() {
         nextSnapshot.treble = 0.85;
         nextSnapshot.energy = Math.max(nextSnapshot.energy, 0.45);
         nextSnapshot.beat = Math.max(nextSnapshot.beat, 0.45);
+        nextSnapshot.spectralCentroid = Math.max(nextSnapshot.spectralCentroid, 0.76);
+        nextSnapshot.spectralFlux = Math.max(nextSnapshot.spectralFlux, 0.78);
+        nextSnapshot.transient = Math.max(nextSnapshot.transient, 0.82);
       } else if (noteMap[token]) {
         if (layer.id === 'bass') {
           playBass(ctx, master, noteMap[token]);
@@ -494,12 +542,16 @@ export function MusicProjectBar() {
           nextSnapshot.bass = Math.max(nextSnapshot.bass, 0.78);
           nextSnapshot.lowMid = Math.max(nextSnapshot.lowMid, 0.32);
           nextSnapshot.energy = Math.max(nextSnapshot.energy, 0.48);
+          nextSnapshot.spectralCentroid = Math.max(nextSnapshot.spectralCentroid, 0.32);
+          nextSnapshot.dynamicRange = Math.max(nextSnapshot.dynamicRange, 0.56);
         } else {
           playArp(ctx, master, noteMap[token]);
           nextSnapshot.volume = Math.max(nextSnapshot.volume, 0.3);
           nextSnapshot.mid = Math.max(nextSnapshot.mid, 0.72);
           nextSnapshot.highMid = Math.max(nextSnapshot.highMid, 0.35);
           nextSnapshot.energy = Math.max(nextSnapshot.energy, 0.36);
+          nextSnapshot.spectralCentroid = Math.max(nextSnapshot.spectralCentroid, 0.56);
+          nextSnapshot.spectralFlux = Math.max(nextSnapshot.spectralFlux, 0.28);
         }
       }
     });
@@ -525,6 +577,10 @@ export function MusicProjectBar() {
       treble: 0,
       energy: 0,
       beat: 0,
+      spectralCentroid: 0,
+      spectralFlux: 0,
+      transient: 0,
+      dynamicRange: 0,
     });
   };
 
