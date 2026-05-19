@@ -74,6 +74,7 @@ export function ControlPanel() {
     y = Math.max(0, Math.min(1, y));
 
     setPadPos({ x, y });
+    setPerformanceControl('speed', 0.25 + x * 2.25); // Map X to glass/scene motion speed
     setPerformanceControl('chaos', y * 2.0); // Map Y to chaos
   };
 

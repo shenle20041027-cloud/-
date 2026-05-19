@@ -3,6 +3,7 @@ import { useStore } from '@/store/useStore';
 import { audioEngine } from '@/lib/AudioEngine';
 import { AudioPanel } from '@/components/layout/AudioPanel';
 import { FxPanel } from '@/components/layout/FxPanel';
+import { ScenePanel } from '@/components/layout/ScenePanel';
 import { TextPanel } from '@/components/layout/TextPanel';
 import { PresetPanel } from '@/components/layout/PresetPanel';
 import { ColorPanel } from '@/components/layout/ColorPanel';
@@ -196,7 +197,9 @@ function ControllerApp() {
 
             {/* CENTER CANVAS & TIMELINE */}
             <div className="flex-1 bg-black relative group flex flex-col min-w-0">
-               {!isFullscreen && <MusicProjectBar />}
+               <div className={isFullscreen ? 'hidden' : 'contents'}>
+                 <MusicProjectBar />
+               </div>
                <div className="flex-1 relative min-h-0">
                  <Visualizer />
                  
@@ -236,6 +239,8 @@ function ControllerApp() {
             {!isFullscreen && (
               <div className="w-[340px] shrink-0 bg-[#0a0a0c] z-10 flex flex-col border-l border-white/10">
                 <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 pointer-events-auto">
+                   <ScenePanel />
+                   <div className="h-px w-full bg-white/5" />
                    <ColorPanel />
                    <div className="h-px w-full bg-white/5" />
                    <FxPanel />
