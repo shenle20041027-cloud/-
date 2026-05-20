@@ -148,24 +148,6 @@ export const useStore = create<VisualizerState>((set) => ({
        case 'Neon Pulse':
           set({ currentScene: 'Pulse', baseColor: '#ff007f', secondaryColor: '#ff003c', glitchActive: true, bloomIntensity: 3, textAnimStyle: 'Beat' });
           break;
-       case 'Spectrum Grid':
-          set({ currentScene: 'Spectrum', baseColor: '#00f3ff', secondaryColor: '#7c3cff', accentColor: '#ffffff', bgColor: '#02030a', bloomIntensity: 2.4, glitchActive: false, rgbSplitAmount: 0.006, textAnimStyle: 'Cinematic' });
-          break;
-       case 'Kaleido Burst':
-          set({ currentScene: 'Kaleido', baseColor: '#ffe94a', secondaryColor: '#ff2f8f', accentColor: '#5ffcff', bgColor: '#050008', bloomIntensity: 2.8, glitchActive: false, rgbSplitAmount: 0.01, textAnimStyle: 'Floating' });
-          break;
-       case 'Tunnel Drive':
-          set({ currentScene: 'Tunnel', baseColor: '#39ff88', secondaryColor: '#194cff', accentColor: '#ffffff', bgColor: '#000504', bloomIntensity: 2.6, glitchActive: false, rgbSplitAmount: 0.008, textAnimStyle: 'Beat' });
-          break;
-       case 'Wave Terrain':
-          set({ currentScene: 'Terrain', baseColor: '#58d7ff', secondaryColor: '#ff4bd8', accentColor: '#ffffff', bgColor: '#020612', bloomIntensity: 2.1, glitchActive: false, rgbSplitAmount: 0.004, textAnimStyle: 'Cinematic' });
-          break;
-       case 'Crystal Bloom':
-          set({ currentScene: 'Crystal', baseColor: '#74fff1', secondaryColor: '#ff69d8', accentColor: '#fff7a8', bgColor: '#05020b', bloomIntensity: 3.0, glitchActive: false, rgbSplitAmount: 0.012, textAnimStyle: 'Floating' });
-          break;
-       case 'Signal Bloom':
-          set({ currentScene: 'SignalBloom', baseColor: '#d78a2d', secondaryColor: '#ff1010', accentColor: '#ffffff', bgColor: '#000000', bloomIntensity: 3.4, glitchActive: false, rgbSplitAmount: 0.014, textAnimStyle: 'Glitch', contrast: 1.18, saturation: 1.25, brightness: 0.92 });
-          break;
        case 'Dark Space':
           set({ currentScene: 'Void', baseColor: '#ffffff', secondaryColor: '#444444', bloomIntensity: 1, textAnimStyle: 'Massive' });
           break;
