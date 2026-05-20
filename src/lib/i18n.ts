@@ -84,6 +84,7 @@ export const t = {
     SCENE_TIMELINE: "SCENE TIMELINE",
     SCENES: {
       Cyber: "CYBER",
+      Dumbar: "GREY GLASS",
       Drop: "DROP",
       Liquid: "LIQUID",
       Calm: "CALM",
@@ -119,6 +120,28 @@ export const t = {
     VISUAL_MEMORY: "VISUAL MEMORY",
     VISUAL_MEMORY_EMPTY: "Save a look after tuning scene, colors and FX. Memories are recalled manually, so music keeps the current visual identity.",
     SAVE_CURRENT_VISUAL_STATE: "Save current visual state",
+
+    // Screen Router
+    SCREEN_ROUTER: "SCREEN ROUTER",
+    DEVICE_URL: "Device URL",
+    EFFECT_ON: "Effect On",
+    OUTPUT_MODE: "Output Mode",
+    OUTPUT_MIRROR: "Mirror",
+    OUTPUT_SOLO: "Solo",
+    OUTPUT_SPLIT: "Split",
+    TRANSITION_STYLE: "Transition Style",
+    TRANSITION_CROSSFADE: "Crossfade",
+    TRANSITION_SCAN: "Scan",
+    TRANSITION_STROBE: "Strobe",
+    TRANSITION_CUT: "Cut",
+    MUSIC_LINK: "Music Link",
+    TRANSITION_AMOUNT: "Transition Amount",
+    MUSIC_ENERGY: "Music Energy",
+    BEAT_TRIGGER: "Beat Trigger",
+    OUTPUT_DISABLED: "Output Disabled",
+    UNKNOWN_SCREEN: "Unknown Screen",
+    SYNCED: "Synced",
+    WAITING: "Waiting",
 
     // Text Engine
     TEXT_ENGINE: "TEXT ENGINE",

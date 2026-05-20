@@ -85,14 +85,19 @@ export function ControlPanel() {
 
   useEffect(() => {
     let animationFrameId = 0;
+    let lastUpdate = 0;
 
     const updateMicLevels = () => {
-      const { volume, bass, subBass, mid, highMid, treble, beat } = getAudioDriveSnapshot(audioDriveMode);
-      setMicLevels({
-        volume: Math.min(1, volume * 2.5),
-        bass: Math.min(1, Math.max(bass, subBass, mid, highMid, treble) * 2.2),
-        beat: Math.min(1, beat),
-      });
+      const now = performance.now();
+      if (now - lastUpdate >= 100) {
+        lastUpdate = now;
+        const { volume, bass, subBass, mid, highMid, treble, beat } = getAudioDriveSnapshot(audioDriveMode);
+        setMicLevels({
+          volume: Math.min(1, volume * 2.5),
+          bass: Math.min(1, Math.max(bass, subBass, mid, highMid, treble) * 2.2),
+          beat: Math.min(1, beat),
+        });
+      }
       animationFrameId = requestAnimationFrame(updateMicLevels);
     };
 

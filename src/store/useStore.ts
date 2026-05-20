@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import type { AudioDriveMode } from '../lib/audioDrive';
 
+export type OutputMode = 'mirror' | 'solo' | 'split';
+export type ScreenTransitionStyle = 'crossfade' | 'scan' | 'strobe' | 'cut';
+export type OutputDeviceType = 'stage' | 'projector' | 'led' | 'tablet' | 'phone';
+
+export interface VisualScreen {
+  id: string;
+  name: string;
+  device: OutputDeviceType;
+  scene: string;
+  enabled: boolean;
+}
+
 export interface VisualMemory {
   id: string;
   name: string;
@@ -104,9 +116,22 @@ interface VisualizerState {
   transitionEnergy: number;
   audioDriveMode: AudioDriveMode;
   visualMemories: VisualMemory[];
+  visualScreens: VisualScreen[];
+  activeScreenId: string;
+  outputMode: OutputMode;
+  screenTransitionStyle: ScreenTransitionStyle;
+  screenTransitionAmount: number;
+  screenAudioReactive: boolean;
+  syncedScreenSignal: number;
   setAutoVjControl: (key: 'autoVjEnabled' | 'memoryRecallEnabled' | 'musicCameraEnabled' | 'audioFxReactive', value: boolean) => void;
   setAutoVjAmount: (key: 'autoVjSensitivity' | 'musicCameraAmount' | 'transitionEnergy', value: number) => void;
   setAudioDriveMode: (mode: AudioDriveMode) => void;
+  setActiveScreen: (id: string) => void;
+  setScreenScene: (id: string, scene: string) => void;
+  setScreenEnabled: (id: string, enabled: boolean) => void;
+  setScreenControl: (key: 'outputMode' | 'screenTransitionStyle' | 'screenTransitionAmount' | 'screenAudioReactive', value: string | number | boolean) => void;
+  setSyncedScreenSignal: (value: number) => void;
+  applyRemoteSyncState: (state: Partial<VisualizerState>) => void;
   saveVisualMemory: () => void;
   applyVisualMemory: (id: string) => void;
 }
@@ -154,6 +179,14 @@ const applyMemoryState = (memory: VisualMemory) => ({
 });
 
 const MEMORY_STORAGE_KEY = 'neonpulse.visualMemories';
+
+const defaultScreens: VisualScreen[] = [
+  { id: 'stage-main', name: 'Main Stage', device: 'stage', scene: 'Cyber', enabled: true },
+  { id: 'projector-left', name: 'Projector L', device: 'projector', scene: 'Topology', enabled: true },
+  { id: 'led-wall', name: 'LED Wall', device: 'led', scene: 'Pulse', enabled: true },
+  { id: 'tablet-booth', name: 'Booth Tablet', device: 'tablet', scene: 'Liquid', enabled: false },
+  { id: 'phone-roam', name: 'Phone View', device: 'phone', scene: 'Void', enabled: false },
+];
 
 const loadStoredMemories = (): VisualMemory[] => {
   if (typeof window === 'undefined') return [];
@@ -252,9 +285,75 @@ export const useStore = create<VisualizerState>((set) => ({
   transitionEnergy: 0.45,
   audioDriveMode: 'mic',
   visualMemories: loadStoredMemories(),
+  visualScreens: defaultScreens,
+  activeScreenId: 'stage-main',
+  outputMode: 'mirror',
+  screenTransitionStyle: 'crossfade',
+  screenTransitionAmount: 0.65,
+  screenAudioReactive: true,
+  syncedScreenSignal: 0,
   setAutoVjControl: (key, value) => set({ [key]: value }),
   setAutoVjAmount: (key, value) => set({ [key]: value }),
   setAudioDriveMode: (mode) => set({ audioDriveMode: mode }),
+  setActiveScreen: (id) => set((state) => {
+    const screen = state.visualScreens.find((item) => item.id === id);
+    return screen ? { activeScreenId: id, currentScene: screen.scene } : {};
+  }),
+  setScreenScene: (id, scene) => set((state) => ({
+    visualScreens: state.visualScreens.map((screen) => (
+      screen.id === id ? { ...screen, scene, enabled: true } : screen
+    )),
+    currentScene: state.activeScreenId === id ? scene : state.currentScene,
+  })),
+  setScreenEnabled: (id, enabled) => set((state) => ({
+    visualScreens: state.visualScreens.map((screen) => (
+      screen.id === id ? { ...screen, enabled } : screen
+    )),
+  })),
+  setScreenControl: (key, value) => set({ [key]: value } as Partial<VisualizerState>),
+  setSyncedScreenSignal: (value) => set((state) => (
+    Math.abs(state.syncedScreenSignal - value) < 0.01 ? {} : { syncedScreenSignal: value }
+  )),
+  applyRemoteSyncState: (state) => set((current) => ({
+    activeScreenId: state.activeScreenId ?? current.activeScreenId,
+    visualScreens: state.visualScreens ?? current.visualScreens,
+    outputMode: state.outputMode ?? current.outputMode,
+    screenTransitionStyle: state.screenTransitionStyle ?? current.screenTransitionStyle,
+    screenTransitionAmount: state.screenTransitionAmount ?? current.screenTransitionAmount,
+    screenAudioReactive: state.screenAudioReactive ?? current.screenAudioReactive,
+    syncedScreenSignal: state.syncedScreenSignal ?? current.syncedScreenSignal,
+    currentScene: state.currentScene ?? current.currentScene,
+    baseColor: state.baseColor ?? current.baseColor,
+    secondaryColor: state.secondaryColor ?? current.secondaryColor,
+    accentColor: state.accentColor ?? current.accentColor,
+    bgColor: state.bgColor ?? current.bgColor,
+    bloomIntensity: state.bloomIntensity ?? current.bloomIntensity,
+    bloomThreshold: state.bloomThreshold ?? current.bloomThreshold,
+    glitchActive: state.glitchActive ?? current.glitchActive,
+    rgbSplitAmount: state.rgbSplitAmount ?? current.rgbSplitAmount,
+    distortion: state.distortion ?? current.distortion,
+    speed: state.speed ?? current.speed,
+    chaos: state.chaos ?? current.chaos,
+    saturation: state.saturation ?? current.saturation,
+    contrast: state.contrast ?? current.contrast,
+    brightness: state.brightness ?? current.brightness,
+    gamma: state.gamma ?? current.gamma,
+    exposure: state.exposure ?? current.exposure,
+    textInput: state.textInput ?? current.textInput,
+    textAnimStyle: state.textAnimStyle ?? current.textAnimStyle,
+    textGlow: state.textGlow ?? current.textGlow,
+    textSpeed: state.textSpeed ?? current.textSpeed,
+    textReactive: state.textReactive ?? current.textReactive,
+    textFontSize: state.textFontSize ?? current.textFontSize,
+    textFontWeight: state.textFontWeight ?? current.textFontWeight,
+    textLetterSpacing: state.textLetterSpacing ?? current.textLetterSpacing,
+    autoVjEnabled: state.autoVjEnabled ?? current.autoVjEnabled,
+    audioFxReactive: state.audioFxReactive ?? current.audioFxReactive,
+    musicCameraEnabled: state.musicCameraEnabled ?? current.musicCameraEnabled,
+    musicCameraAmount: state.musicCameraAmount ?? current.musicCameraAmount,
+    transitionEnergy: state.transitionEnergy ?? current.transitionEnergy,
+    audioDriveMode: state.audioDriveMode ?? current.audioDriveMode,
+  })),
   saveVisualMemory: () => set((state) => {
     const memory = createMemorySnapshot(state, `Memory ${Math.min(state.visualMemories.length + 1, 8)}`);
     const visualMemories = [memory, ...state.visualMemories].slice(0, 8);

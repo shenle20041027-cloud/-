@@ -9,15 +9,29 @@ import { PresetPanel } from '@/components/layout/PresetPanel';
 import { ColorPanel } from '@/components/layout/ColorPanel';
 import { ControlPanel } from '@/components/layout/ControlPanel';
 import { CameraPanel } from '@/components/layout/CameraPanel'; // We will create this
+import { ScreenPanel } from '@/components/layout/ScreenPanel';
+import { ScreenOutput } from '@/components/screen/ScreenOutput';
 import { Visualizer } from '@/components/visualizer/Visualizer';
 import { MusicProjectBar } from '@/components/music/MusicProjectBar';
-import { Play, Settings2, Sparkles, Monitor, Focus, Volume2, Type, Aperture, PaintBucket, LayoutGrid, Sliders } from 'lucide-react';
+import { Play, Sparkles, Focus, Volume2, Type, Aperture, LayoutGrid, Monitor } from 'lucide-react';
 import { t } from '@/lib/i18n';
+import { useScreenSync } from '@/lib/screenSync';
 
 export default function App() {
+  const screenMatch = window.location.pathname.match(/^\/screen\/([^/]+)/);
+
+  if (screenMatch) {
+    return <ScreenOutput screenId={decodeURIComponent(screenMatch[1])} />;
+  }
+
+  return <ControllerApp />;
+}
+
+function ControllerApp() {
   const { audioReady, setAudioReady, inputGain, language, setLanguage, isFullscreen, activeLeftPanel, setActiveLeftPanel } = useStore();
   const [initError, setInitError] = useState('');
   const i18n = t[language];
+  useScreenSync('controller');
 
   useEffect(() => {
     let animationFrameId: number;
@@ -94,6 +108,7 @@ export default function App() {
       case 'Audio': return <AudioPanel />;
       case 'Text': return <TextPanel />;
       case 'Camera': return <CameraPanel />;
+      case 'Screens': return <ScreenPanel />;
       case 'Presets': return <PresetPanel />;
       default: return <PresetPanel />;
     }
@@ -158,6 +173,12 @@ export default function App() {
                 className={`p-2.5 rounded-lg transition-all ${activeLeftPanel==='Camera' ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
               >
                 <Aperture size={18} />
+              </button>
+              <button 
+                onClick={() => setActiveLeftPanel('Screens')} 
+                className={`p-2.5 rounded-lg transition-all ${activeLeftPanel==='Screens' ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+              >
+                <Monitor size={18} />
               </button>
            </div>
          )}
