@@ -122,7 +122,7 @@ function ControllerApp() {
 
       {/* TOP STATUS BAR */}
       {!isFullscreen && (
-        <header className="h-12 w-full flex items-center justify-between px-6 border-b border-white/10 bg-[#050505]/90 backdrop-blur-md z-20 shrink-0">
+        <header className="h-12 w-full flex items-center justify-between px-6 border-b border-white/10 bg-[#050505]/90 backdrop-blur-md z-30 shrink-0 pointer-events-auto">
           <div className="flex items-center gap-4">
              <div className="w-6 h-6 bg-white text-black rounded-sm flex items-center justify-center">
                 <Sparkles size={14} />
@@ -149,7 +149,7 @@ function ControllerApp() {
          
          {/* LEFT DOCK (Fixed) */}
          {!isFullscreen && (
-           <div className="w-14 h-full bg-[#050505] border-r border-white/10 flex flex-col items-center py-4 gap-4 z-20 shrink-0">
+           <div className="w-14 h-full bg-[#050505] border-r border-white/10 flex flex-col items-center py-4 gap-4 z-30 shrink-0 pointer-events-auto">
               <button 
                 onClick={() => setActiveLeftPanel('Presets')} 
                 className={`p-2.5 rounded-lg transition-all ${activeLeftPanel==='Presets' ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
@@ -188,7 +188,7 @@ function ControllerApp() {
             
             {/* LEFT CONFIG PANEL */}
             {!isFullscreen && (
-              <div className="w-[300px] shrink-0 bg-[#0a0a0c] relative z-10 flex flex-col border-r border-white/10">
+              <div className="w-[300px] shrink-0 bg-[#0a0a0c] relative z-30 flex flex-col border-r border-white/10 pointer-events-auto">
                  <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 pointer-events-auto">
                    {renderLeftPanelContent()}
                  </div>
@@ -206,7 +206,7 @@ function ControllerApp() {
                  {/* Fullscreen UI trigger */}
                   <button 
                     onClick={() => useStore.getState().setIsFullscreen(!isFullscreen)}
-                    className="absolute bottom-6 right-6 z-50 p-4 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 hover:scale-110 transition-all hover:bg-white hover:text-black"
+                    className="absolute bottom-6 right-6 z-50 p-4 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 hover:scale-110 transition-all hover:bg-white hover:text-black pointer-events-auto"
                   >
                     <Focus size={20} />
                   </button>
@@ -237,7 +237,7 @@ function ControllerApp() {
 
             {/* RIGHT GLOBAL PANEL */}
             {!isFullscreen && (
-              <div className="w-[340px] shrink-0 bg-[#0a0a0c] z-10 flex flex-col border-l border-white/10">
+              <div className="w-[340px] shrink-0 bg-[#0a0a0c] z-30 flex flex-col border-l border-white/10 pointer-events-auto">
                 <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 pointer-events-auto">
                    <ScenePanel />
                    <div className="h-px w-full bg-white/5" />

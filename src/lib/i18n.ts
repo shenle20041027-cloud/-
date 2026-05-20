@@ -90,7 +90,8 @@ export const t = {
       Calm: "CALM",
       Void: "DARK SPACE",
       Topology: "SONIC TOPOLOGY",
-      Pulse: "NEON PULSE"
+      Pulse: "NEON PULSE",
+      Dumbar: "DUMBAR"
     },
 
     // Control Panel
@@ -257,7 +258,8 @@ export const t = {
       Calm: "宁静",
       Void: "暗黑深空",
       Topology: "声波拓扑",
-      Pulse: "霓虹脉冲"
+      Pulse: "霓虹脉冲",
+      Dumbar: "玻璃方块"
     },
 
     // Control Panel

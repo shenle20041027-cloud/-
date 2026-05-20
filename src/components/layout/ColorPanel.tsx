@@ -23,17 +23,17 @@ const Slider = ({ label, value, onChange, min = 0, max = 2, step = 0.01 }: any) 
 const ColorPickerInput = ({ label, value, onChange }: any) => (
   <div className="flex items-center justify-between mb-3 bg-white/5 p-2 rounded-lg border border-white/5">
     <span className="text-[10px] uppercase font-bold text-white/60 tracking-widest pl-2">{label}</span>
-    <div className="relative w-8 h-8 rounded-md overflow-hidden cursor-pointer border border-white/20 shadow-inner group">
+    <label className="relative w-8 h-8 rounded-md overflow-hidden cursor-pointer border border-white/20 shadow-inner group" style={{ backgroundColor: value }}>
       <input 
         type="color" 
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
       />
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 pointer-events-none">
         <Pipette size={12} className="text-white" />
       </div>
-    </div>
+    </label>
   </div>
 );
 
@@ -46,12 +46,19 @@ export function ColorPanel() {
   const i18n = t[language];
 
   const colors = [
-    { name: 'Cyber Blue', value: '#00f3ff' },
-    { name: 'Neon Purple', value: '#b026ff' },
-    { name: 'Acid Green', value: '#39ff14' },
-    { name: 'Infrared', value: '#ff003c' },
-    { name: 'Monochrome', value: '#ffffff' },
+    { name: 'Cyber Blue', base: '#00f3ff', secondary: '#7c3cff', accent: '#ffffff', bg: '#02030a' },
+    { name: 'Amber Signal', base: '#d78a2d', secondary: '#ff1010', accent: '#ffffff', bg: '#000000' },
+    { name: 'Acid Green', base: '#39ff14', secondary: '#194cff', accent: '#ffffff', bg: '#000504' },
+    { name: 'Hot Magenta', base: '#ff2f8f', secondary: '#ffe94a', accent: '#5ffcff', bg: '#050008' },
+    { name: 'Monochrome', base: '#ffffff', secondary: '#777777', accent: '#ffffff', bg: '#000000' },
   ];
+
+  const applyPalette = (palette: typeof colors[number]) => {
+    setColorGrading('baseColor', palette.base);
+    setColorGrading('secondaryColor', palette.secondary);
+    setColorGrading('accentColor', palette.accent);
+    setColorGrading('bgColor', palette.bg);
+  };
 
   return (
     <div className="w-full p-6 flex flex-col gap-6">
@@ -65,6 +72,25 @@ export function ColorPanel() {
         <ColorPickerInput label={i18n.COLOR_SECONDARY || 'Secondary'} value={secondaryColor} onChange={(v: string) => setColorGrading('secondaryColor', v)} />
         <ColorPickerInput label={i18n.COLOR_ACCENT || 'Accent'} value={accentColor} onChange={(v: string) => setColorGrading('accentColor', v)} />
         <ColorPickerInput label={i18n.COLOR_BACKGROUND || 'Background'} value={bgColor} onChange={(v: string) => setColorGrading('bgColor', v)} />
+      </div>
+
+      <div className="grid grid-cols-5 gap-2">
+        {colors.map((palette) => (
+          <button
+            key={palette.name}
+            type="button"
+            title={palette.name}
+            aria-label={palette.name}
+            onClick={() => applyPalette(palette)}
+            className="h-9 rounded-lg border border-white/10 overflow-hidden hover:scale-105 hover:border-white/40 transition-all focus:outline-none focus:ring-2 focus:ring-white/40"
+          >
+            <span className="grid h-full grid-cols-3">
+              <span style={{ backgroundColor: palette.base }} />
+              <span style={{ backgroundColor: palette.secondary }} />
+              <span style={{ backgroundColor: palette.accent }} />
+            </span>
+          </button>
+        ))}
       </div>
 
       <div className="h-px w-full bg-white/5 my-2" />
