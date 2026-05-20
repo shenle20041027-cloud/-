@@ -1218,6 +1218,21 @@ const liquidFragment = `
   uniform float uLowMid;
   uniform float uEnergy;
   varying vec2 vUv;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
   
   float smin(float a, float b, float k) {
     float h = clamp( 0.5+0.5*(b-a)/k, 0.0, 1.0 );
@@ -1233,32 +1248,54 @@ const liquidFragment = `
   
   mat2 rot(float a) { float s = sin(a), c = cos(a); return mat2(c, -s, s, c); }
 
+  float waveBand(vec2 p, float offset, float amp, float freq, float phase, float width) {
+    float y = offset
+      + sin(p.x * freq + phase) * amp
+      + sin(p.x * (freq * 0.48) - phase * 0.76) * amp * 0.55
+      + sin(p.x * (freq * 1.9) + phase * 0.35) * amp * 0.16;
+    return abs(p.y - y) - width;
+  }
+
   void main() {
     vec2 p = vUv * 2.0 - 1.0;
     p.x *= 1.5; // aspect ratio approximation
-    
-    // Add subtle wave distortion from audio
-    p += vec2(sin(p.y * 3.0 + uTime), cos(p.x * 2.0 + uTime)) * (0.02 + uEnergy * 0.05);
+
+    float t = uTime * (0.62 + uEnergy * 0.18);
+    float pulse = 0.5 + 0.5 * sin(t * 1.55 + uBass * 1.6);
+    float grit = noise(p * 5.0 + vec2(t * 0.35, -t * 0.24));
+
+    // Acid-fluid displacement: keeps the original palette, but gives the edge more restless motion.
+    p += vec2(
+      sin(p.y * 4.2 + t * 1.45) + sin((p.x + p.y) * 3.1 - t * 0.9),
+      cos(p.x * 3.4 - t * 1.1) + sin((p.x - p.y) * 2.8 + t * 1.35)
+    ) * (0.02 + uEnergy * 0.035);
+    p += (grit - 0.5) * (0.018 + uLowMid * 0.024);
 
     float d = 100.0;
-    
+
+    // Long liquid ribbons, tuned for acid-neon wave motion.
+    d = smin(d, waveBand(p, 0.30, 0.23 + uBass * 0.08, 2.7, t * 1.05, 0.105 + uEnergy * 0.025), 0.19);
+    d = smin(d, waveBand(p, -0.42, 0.20 + uLowMid * 0.08, 3.15, -t * 0.92 + 1.6, 0.092 + uBass * 0.03), 0.17);
+    d = smin(d, waveBand(p, -0.04, 0.16 + uEnergy * 0.06, 4.4, t * 1.42 + 2.2, 0.048), 0.13);
+
     // Blob 1: Center pulsing
-    d = smin(d, sdCircle(p - vec2(0.0, 0.0), 0.3 + uBass * 0.1), 0.2);
+    d = smin(d, sdCircle(p - vec2(-0.28, -0.18), 0.32 + uBass * 0.13), 0.22);
     
     // Blob 2: Orbiting fast
-    vec2 pos2 = vec2(sin(uTime * 1.5), cos(uTime * 1.5)) * 0.5;
-    d = smin(d, sdCircle(p - pos2, 0.15 + uLowMid * 0.1), 0.2);
+    vec2 pos2 = vec2(sin(t * 1.5), cos(t * 1.5)) * 0.5;
+    d = smin(d, sdCircle(p - pos2, 0.17 + uLowMid * 0.12), 0.22);
     
     // Blob 3: Figure 8
-    vec2 pos3 = vec2(sin(uTime * 0.8) * 0.8, sin(uTime * 1.6) * 0.4);
-    d = smin(d, sdBox(p - pos3, vec2(0.2)), 0.3);
+    vec2 pos3 = vec2(sin(t * 0.8) * 0.8, sin(t * 1.6) * 0.4);
+    d = smin(d, sdBox((p - pos3) * rot(sin(t) * 0.55), vec2(0.18, 0.24)), 0.28);
     
     // Blob 4: Random drift
-    vec2 pos4 = vec2(cos(uTime * 0.5) * 0.6, sin(uTime * 0.7) * 0.6);
-    d = smin(d, sdCircle(p - pos4, 0.2), 0.2);
+    vec2 pos4 = vec2(cos(t * 0.5) * 0.6, sin(t * 0.7) * 0.6);
+    d = smin(d, sdCircle(p - pos4, 0.2 + pulse * 0.04), 0.2);
 
     // Inner Cutout / Negative Space (creates hollow organic shapes like letters)
-    float d_hole = sdCircle(p - vec2(sin(uTime), cos(uTime*1.2)) * 0.2, 0.15 + uEnergy*0.1);
+    float d_hole = sdCircle(p - vec2(sin(t), cos(t*1.2)) * 0.2, 0.14 + uEnergy*0.1);
+    d_hole = smin(d_hole, waveBand(p, -0.08, 0.12 + uBass * 0.04, 3.6, -t * 1.2, 0.035), 0.1);
     d = max(d, -d_hole); // subtract hole
 
     // Rendering
@@ -1270,21 +1307,29 @@ const liquidFragment = `
     
     // Stroke / Outlines
     // We want a bright yellow/green core outline, and a purple outer outline
-    float outlineWidth = 0.02 + uEnergy * 0.01;
+    float outlineWidth = 0.016 + uEnergy * 0.012 + pulse * 0.003;
     
     // Create the contour logic
-    float fill = smoothstep(0.0, -0.01, d);             // 1 if inside, 0 if outside
-    float strokeCore = smoothstep(0.01, -0.01, abs(d) - outlineWidth*0.5); // 1 on the exact boundary
-    float strokeOuter = smoothstep(0.04, -0.01, abs(d) - outlineWidth); // slightly wider outer glow
+    float fill = smoothstep(0.0, -0.012, d);             // 1 if inside, 0 if outside
+    float edgeDistance = abs(d);
+    float strokeCore = 1.0 - smoothstep(0.0, outlineWidth, edgeDistance);
+    float strokeHot = 1.0 - smoothstep(outlineWidth * 0.75, outlineWidth * 2.8, edgeDistance);
+    float strokeOuter = 1.0 - smoothstep(outlineWidth * 1.8, 0.22 + uBass * 0.08, edgeDistance);
+    float ripple = 0.5 + 0.5 * sin(edgeDistance * 36.0 - t * 3.4 + grit * 1.6);
     
     vec3 neonYellow = vec3(0.8, 1.0, 0.0);
     vec3 neonPurple = vec3(0.4, 0.0, 1.0);
     
     vec3 col = mix(bgCol, innerCol, fill);
+    col += bgCol * (grit - 0.5) * 0.09;
     
     // Add strokes
-    col = mix(col, neonPurple, strokeOuter * 0.8);
+    col = mix(col, neonPurple, strokeOuter * (0.5 + ripple * 0.1));
+    col = mix(col, mix(neonYellow, neonPurple, 0.18), strokeHot * (0.42 + uEnergy * 0.08));
     col = mix(col, neonYellow, strokeCore);
+    col += neonPurple * strokeOuter * strokeOuter * (0.16 + uBass * 0.32);
+    col += neonYellow * strokeCore * (0.28 + pulse * 0.12);
+    col *= 0.99 + sin(vUv.y * 420.0 + t * 1.6) * 0.008;
     
     gl_FragColor = vec4(col, 1.0);
   }
@@ -1293,14 +1338,29 @@ const liquidFragment = `
 function LiquidScene() {
   const { speed } = useStore();
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const liquidTimeRef = useRef(0);
+  const liquidSpeedRef = useRef(0.16);
+  const liquidSurgeRef = useRef(0);
   
-  useFrame((state) => {
+  useFrame((_, delta) => {
     if(!materialRef.current) return;
-    const { bass, lowMid, energy } = getReactiveAudio();
-    materialRef.current.uniforms.uTime.value = state.clock.elapsedTime * speed;
-    materialRef.current.uniforms.uBass.value = bass;
-    materialRef.current.uniforms.uLowMid.value = lowMid;
-    materialRef.current.uniforms.uEnergy.value = energy;
+    const { volume, bass, lowMid, energy, beat, treble } = getReactiveAudio();
+    const spectralFlux = Math.max(treble, beat * 0.5);
+    const transient = beat;
+    const audioLift = volume * 0.36 + energy * 0.42 + bass * 0.55 + lowMid * 0.22;
+    const targetSurge = beat * 0.95 + transient * 0.62 + spectralFlux * 0.42;
+    liquidSurgeRef.current += (targetSurge - liquidSurgeRef.current) * 0.065;
+
+    const targetSpeed = 0.11 + audioLift + liquidSurgeRef.current;
+    const follow = targetSpeed > liquidSpeedRef.current ? 0.055 : 0.03;
+    liquidSpeedRef.current += (targetSpeed - liquidSpeedRef.current) * follow;
+    liquidTimeRef.current += delta * liquidSpeedRef.current * Math.max(0.25, speed);
+
+    const uniforms = materialRef.current.uniforms;
+    uniforms.uTime.value = liquidTimeRef.current;
+    uniforms.uBass.value += (bass - uniforms.uBass.value) * 0.075;
+    uniforms.uLowMid.value += (lowMid - uniforms.uLowMid.value) * 0.07;
+    uniforms.uEnergy.value += (energy - uniforms.uEnergy.value) * 0.06;
   });
 
   return (
